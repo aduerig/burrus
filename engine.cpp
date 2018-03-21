@@ -56,6 +56,23 @@ void Engine::init_lsb_lookup()
     }
 }
 
+void Engine::fill_square_masks()
+{
+    U64 temp;
+    for(int i = 0; i < 64; i++)
+    {
+        temp = 1ULL << i;
+
+        int diag = get_diag(get_rank(temp), get_file(temp));
+        int left_diag = diag >> 5;
+        int right_diag = diag & 0x000000000000000F;
+
+        square_masks[i].left_diag_mask_excluded = ~temp & diag_left_mask[left_diag];
+        square_masks[i].right_diag_mask_excluded = ~temp & diag_right_mask[right_diag];
+        square_masks[i].file_mask_excluded = ~temp & col_mask[get_file(temp)];
+    }
+}
+
 void Engine::init_masks()
 {
     row_mask = (U64*) malloc(8 * sizeof(U64));    
@@ -222,11 +239,28 @@ void Engine::stack_pop()
     board_stack_index -= 2;
 }
 
+int Engine::encode_move(int stone_square, int color)
+{
+    return stone_square << 16 | color;
+}
+
+int Engine::decode_color(int move)
+{
+    return move & 1;
+}
+
+int Engine::decode_loc(int move)
+{
+    return move >> 16;
+}
+
 // Takes in a move, alters the BitboardEngine's representation to the NEXT state based on the CURRENT move action
 void Engine::push_move(int move)
 {
+    int color = decode_color(move);
+    int stone_loc = decode_loc(move);
+    flip_stones(square_to_bitboard(stone_loc), get_color(color), get_color(1-color), color);
     stack_push();
-
 }
 
 // Takes in a move, alters the BitboardEngine's representation to the PREVIOUS state based on the LAST move action
@@ -235,6 +269,26 @@ void Engine::pop_move()
     stack_pop();
 }
 
+void Engine::flip_stones(U64 stone, U64 own_occ, U64 opp_occ, int color)
+{
+    U64 flippers = 0;
+    U64 init_attacks = one_rook_attacks(stone);
+    U64 pieces_in_los = init_attacks & own_occ;
+    
+    U64 opp_attacks;
+    U64 popped_board;
+    while(pieces_in_los)
+    {
+        popped_board = lsb_board(pieces_in_los);
+        opp_attacks = one_rook_attacks(popped_board);
+        pieces_in_los = pieces_in_los - popped_board;
+
+        flippers = flippers | (opp_attacks & init_attacks);
+    }
+
+    pos.board[color] = pos.board[color] | (flippers & opp_occ);
+    pos.board[1-color] = pos.board[color] & ~(flippers & opp_occ);
+}
 
 void Engine::print_bit_rep(U64 board)
 {
@@ -300,31 +354,14 @@ void Engine::print_char()
 // North << 8
 // Northeast << 9
 
-//check implementation
-// 315 ns per (due to lsb_digit)
 int Engine::bitboard_to_square(U64 piece)
 {
     return(lsb_digit(piece));
 }
 
-// ~3ns
 U64 Engine::square_to_bitboard(int square)
 {
     return(1ULL << square);
-}
-
-
-// Some hueristics have been met, the only way to check if a move is legal or not, we must make it.
-bool Engine::check_legal(int move, int color)
-{
-    push_move(move);
-    // if(get_in_check(color)) // if legal somehow
-    // {
-    //     pop_move();
-    //     return false;
-    // }
-    pop_move();
-    return true;
 }
 
 // Generates and returns a list of legal moves for a color
@@ -339,7 +376,7 @@ int* Engine::generate_moves(int color)
     while(possible_moves)
     {
         temp = lsb_board(possible_moves);
-        move_list[move_list[0]+1] = bitboard_to_square(temp);
+        move_list[move_list[0]+1] = encode_move(bitboard_to_square(temp), color);
         move_list[0]++;
         possible_moves = possible_moves - temp;
     }
@@ -370,10 +407,19 @@ int Engine::score_board()
     return total;
 }
 
+
+//alternative method to scoring (probably faster)
+// http://chessprogramming.wikispaces.com/Population+Count#SWAR-Popcount-The%20PopCount%20routine
+// int popCount (U64 x) {
+//     x =  x       - ((x >> 1)  & k1); /* put count of each 2 bits into those 2 bits */
+//     x = (x & k2) + ((x >> 2)  & k2); /* put count of each 4 bits into those 4 bits */
+//     x = (x       +  (x >> 4)) & k4 ; /* put count of each 8 bits into those 8 bits */
+//     x = (x * kf) >> 56; /* returns 8 most significant bits of x + (x<<8) + (x<<16) + (x<<24) + ...  */
+//     return (int) x;
+// }
+
 // -1 for not over
-// 0 for black winning
-// 1 for white winning
-// 2 for draw
+// other numerals centered around 100
 int Engine::is_terminal(int* move_list)
 {
     if(move_list[0] == 0)
@@ -385,7 +431,6 @@ int Engine::is_terminal(int* move_list)
 
 
 //move gen
-
 U64 Engine::cardinal_moves(int color)
 {
     return north_moves(get_color(color), get_color(1-color), ~get_all()) | south_moves(get_color(color), get_color(1-color), ~get_all()) |
@@ -492,10 +537,25 @@ U64 Engine::north_west_moves(U64 mine, U64 prop, U64 empty)
     return empty & (moves << 9);
 }
 
+
+U64 Engine::one_rook_attacks(U64 rook)
+{
+    int square = bitboard_to_square(rook);
+    U64 occ = get_all();
+
+    U64 forward, reverse;
+    forward  = occ & square_masks[square].file_mask_excluded;
+
+    reverse  = vertical_flip(forward);
+    forward -= rook;
+    reverse -= vertical_flip(rook);
+    forward ^= vertical_flip(reverse);
+    forward &= square_masks[square].file_mask_excluded;
+    return forward;
+}
+
 // Takes in a 64 bit number with single bit
 // Returns the rank piece is on 0-7, bottom to top
-// Alters nothing
-// ~6ns
 int Engine::get_rank(U64 num)
 {
     U64 max0 = 128ULL; // 2^7
@@ -551,8 +611,6 @@ int Engine::get_rank(U64 num)
 
 // Takes in a 64 bit number with single bit
 // Returns the file piece is on 0-7, left to right
-// Alters nothing 
-// ~9ns
 int Engine::get_file(U64 num)
 {
     switch(num)
@@ -677,28 +735,28 @@ int Engine::get_diag(int rank, int file)
 
 
 // Takes in a bitboard and will return the bitboard representing only the least significant bit.
-// Example: the initial white_nights bitboard, the least significant 1 occurs at index 1 (...00001000010)
 // therefore simply return ((lots of zeros)00000000000010)
 // YOU MAY ASSUME A 1 EXISTS, (0000000000000000000) will not be given
-// n &= (n - 1) to find val of leftmost maybe faster
-// MAPPING IS 311.969ns (using unordered map)
-// look into: https://stackoverflow.com/questions/757059/position-of-least-significant-bit-that-is-set
-int Engine::lsb_digit(U64 board)
-{
-    return lsb_lookup[lsb_board(board)];
-    // return(ffsll(board)); // i think only works on linux
-}
+#ifdef __linux__ // much faster than WIN32 
+    int Engine::lsb_digit(unsigned long long board)
+    {
+        // return(ffsll(board)); // i think only works on linux
+        return __builtin_ffsll (board) - 1;
+    }
+#else
+    int Engine::lsb_digit(unsigned long long board)
+    {
+        return(lsb_lookup[lsb_board(board)]);
+    }
+#endif
 
 // Takes in a bitboard
 // Returns a bitboard with soley the least significant bit = 1
 // All other bits = 0
-// Alters nothing
-// 4ns
 U64 Engine::lsb_board(U64 board)
 {
     return(board & (-board));
 }
-
 
 // See above, except return the move_list significant bit bitboard
 U64 Engine::msb_board(U64 board)
@@ -742,16 +800,7 @@ U64 Engine::horizontal_flip(U64 x)
 }
 
 
-// 4ns
 U64 Engine::vertical_flip(U64 x)
 {
     return __builtin_bswap64(x);
-    // return (x >> 56) |
-    //       ((x<<40) & 0x00FF000000000000) |
-    //       ((x<<24) & 0x0000FF0000000000) |
-    //       ((x<<8) & 0x000000FF00000000) |
-    //       ((x>>8) & 0x00000000FF000000) |
-    //       ((x>>24) & 0x0000000000FF0000) |
-    //       ((x>>40) & 0x000000000000FF00) |
-    //       (x << 56);
 }

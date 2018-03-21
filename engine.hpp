@@ -26,6 +26,13 @@ struct position
     U64 board[2]; // first black, then white
 };
 
+struct precomputed_masks
+{
+   U64 left_diag_mask_excluded;
+   U64 right_diag_mask_excluded;
+   U64 file_mask_excluded;
+};
+
 
 class Engine
 {
@@ -43,12 +50,14 @@ class Engine
         U64 *diag_right_mask;
 
         // pushing and popping moves from stack
+
         void push_move(int move);
         void pop_move();
+        void flip_stones(U64 stone, U64 own_occ, U64 opp_occ, int color);
 
         //printing
-        void print_chess_rep(U64 num);
-        void print_chess_char();
+        void print_bit_rep(U64 num);
+        void print_char();
 
 
         void init_engine();
@@ -56,6 +65,10 @@ class Engine
         void init_position();
         void init_position(U64 *board_data);
         void init_lsb_lookup();
+
+        void fill_square_masks();
+
+        int encode_move(int stone_square, int color);
         
         // masks
         void init_masks();
@@ -80,11 +93,13 @@ class Engine
         void stack_push();
         void stack_pop();
 
+        int encode_move(U64 stone_square, int color);
+        int decode_color(int move);
+        int decode_loc(int move);
+
         // board helper functions
         int bitboard_to_square(U64 piece);
         U64 square_to_bitboard(int square);
-        void print_bit_rep(unsigned long long board);
-        void print_char();
 
         //move gen helpers
         bool check_legal(int move, int color);
@@ -106,6 +121,8 @@ class Engine
         U64 south_east_moves(U64 mine, U64 prop, U64 empty);
         U64 south_west_moves(U64 mine, U64 prop, U64 empty);
         U64 north_west_moves(U64 mine, U64 prop, U64 empty);
+        
+        U64 one_rook_attacks(U64 rook);
 
         // get rank/file/diag info
         int get_rank(U64 num);
@@ -130,6 +147,8 @@ class Engine
 
         int board_stack_index;
         U64* board_stack;
+
+        precomputed_masks square_masks[64];
 
         std::unordered_map<U64, int> lsb_lookup;
 };
