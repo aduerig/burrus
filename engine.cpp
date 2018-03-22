@@ -569,31 +569,50 @@ U64 Engine::north_west_moves(U64 mine, U64 prop, U64 empty)
     return empty & (moves << 7);
 }
 
-
-U64 Engine::one_rook_attacks(U64 rook, U64 occ)
+U64 Engine::one_rook_attacks(U64 rook, U64 o)
 {
-    int square = bitboard_to_square(rook);
+    U64 row = get_rank(rook);
+    U64 col = get_file(rook);
 
-    U64 forward, reverse;
-    forward  = occ & square_masks[square].file_mask_excluded;
+    U64 o_rev = reverse_64_bits(o);
+    U64 s_rev = reverse_64_bits(rook);
 
-    // print_bit_rep(occ);
-    // printf("mask\n");
-    // print_bit_rep(square_masks[square].file_mask_excluded);
+    U64 hori = (o - 2*rook) ^ reverse_64_bits(o_rev - 2*s_rev);
+    hori = hori & row_mask[row];
 
-    printf("occ\n");
-    print_bit_rep(occ);
-    printf("\n");
+    U64 o_mask = o & col_mask[col];
+    U64 o_rev_mask = reverse_64_bits(o_mask);
+    U64 vert = (o_mask - 2*rook) ^ reverse_64_bits(o_rev_mask - 2*s_rev);
+    vert = vert & col_mask[col];
 
-    reverse  = vertical_flip(forward);
-    forward -= rook;
-    reverse -= vertical_flip(rook);
-    forward ^= vertical_flip(reverse);
-    forward &= square_masks[square].file_mask_excluded;
-    print_bit_rep(forward);
-    exit(0);
-    return forward;
+    return(hori | vert);
 }
+
+
+// U64 Engine::one_rook_attacks(U64 rook, U64 occ)
+// {
+//     int square = bitboard_to_square(rook);
+
+//     U64 forward, reverse;
+//     forward  = occ & square_masks[square].file_mask_excluded;
+
+//     // print_bit_rep(occ);
+//     // printf("mask\n");
+//     // print_bit_rep(square_masks[square].file_mask_excluded);
+
+//     printf("occ\n");
+//     print_bit_rep(occ);
+//     printf("\n");
+
+//     reverse  = vertical_flip(forward);
+//     forward -= rook;
+//     reverse -= vertical_flip(rook);
+//     forward ^= vertical_flip(reverse);
+//     forward &= square_masks[square].file_mask_excluded;
+//     print_bit_rep(forward);
+//     exit(0);
+//     return forward;
+// }
 
 // Takes in a 64 bit number with single bit
 // Returns the rank piece is on 0-7, bottom to top
