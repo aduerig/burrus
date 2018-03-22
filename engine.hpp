@@ -122,7 +122,7 @@ class Engine
         U64 south_west_moves(U64 mine, U64 prop, U64 empty);
         U64 north_west_moves(U64 mine, U64 prop, U64 empty);
         
-        U64 one_rook_attacks(U64 rook);
+        U64 one_rook_attacks(U64 rook, U64 occ);
 
         // get rank/file/diag info
         int get_rank(U64 num);

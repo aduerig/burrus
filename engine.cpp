@@ -28,6 +28,7 @@ void Engine::init_engine()
 
     init_masks();
     init_lsb_lookup();
+    fill_square_masks();
 }
 
 void Engine::reset_engine()
@@ -59,18 +60,38 @@ void Engine::init_lsb_lookup()
 void Engine::fill_square_masks()
 {
     U64 temp;
+    // for(int i = 0; i < 64; i++)
+    // {
+    //     temp = 1ULL << i;
+
+    //     int diag = get_diag(get_rank(temp), get_file(temp));
+    //     int left_diag = diag >> 5;
+    //     int right_diag = diag & 0x000000000000000F;
+
+    //     square_masks[i].left_diag_mask_excluded = ~temp & diag_left_mask[left_diag];
+    //     square_masks[i].right_diag_mask_excluded = ~temp & diag_right_mask[right_diag];
+    //     square_masks[i].file_mask_excluded = ~temp & col_mask[get_file(temp)];
+    // }
+
     for(int i = 0; i < 64; i++)
     {
         temp = 1ULL << i;
+        // printf("%i\n", i);
+        // print_bit_rep(temp);
+
 
         int diag = get_diag(get_rank(temp), get_file(temp));
         int left_diag = diag >> 5;
         int right_diag = diag & 0x000000000000000F;
 
+        // printf("filemask\n");
+
         square_masks[i].left_diag_mask_excluded = ~temp & diag_left_mask[left_diag];
         square_masks[i].right_diag_mask_excluded = ~temp & diag_right_mask[right_diag];
         square_masks[i].file_mask_excluded = ~temp & col_mask[get_file(temp)];
+        // print_bit_rep(square_masks[i].file_mask_excluded);
     }
+    // exit(0);
 }
 
 void Engine::init_masks()
@@ -257,10 +278,13 @@ int Engine::decode_loc(int move)
 // Takes in a move, alters the BitboardEngine's representation to the NEXT state based on the CURRENT move action
 void Engine::push_move(int move)
 {
+    stack_push();
     int color = decode_color(move);
     int stone_loc = decode_loc(move);
-    flip_stones(square_to_bitboard(stone_loc), get_color(color), get_color(1-color), color);
-    stack_push();
+
+    U64 stone = square_to_bitboard(stone_loc);
+    pos.board[color] = stone | pos.board[color]; // put move on board
+    flip_stones(stone, get_color(color), get_color(1-color), color);
 }
 
 // Takes in a move, alters the BitboardEngine's representation to the PREVIOUS state based on the LAST move action
@@ -272,28 +296,29 @@ void Engine::pop_move()
 void Engine::flip_stones(U64 stone, U64 own_occ, U64 opp_occ, int color)
 {
     U64 flippers = 0;
-    U64 init_attacks = one_rook_attacks(stone);
+    U64 init_attacks = one_rook_attacks(stone, own_occ);
     U64 pieces_in_los = init_attacks & own_occ;
     
-    U64 opp_attacks;
+    U64 other_attacks;
     U64 popped_board;
+
     while(pieces_in_los)
     {
         popped_board = lsb_board(pieces_in_los);
-        opp_attacks = one_rook_attacks(popped_board);
+        other_attacks = one_rook_attacks(popped_board, own_occ);
         pieces_in_los = pieces_in_los - popped_board;
 
-        flippers = flippers | (opp_attacks & init_attacks);
+        flippers = flippers | (other_attacks & init_attacks);
     }
 
     pos.board[color] = pos.board[color] | (flippers & opp_occ);
-    pos.board[1-color] = pos.board[color] & ~(flippers & opp_occ);
+    pos.board[1-color] = pos.board[1-color] - flippers;
 }
 
 void Engine::print_bit_rep(U64 board)
 {
     int shifter;
-    U64 to_print = board;
+    U64 to_print = horizontal_flip(board);
     U64 row;
     for(int i = 7; i > -1; i--)
     {
@@ -318,7 +343,7 @@ void Engine::print_char()
     U64 p;
     U64 one_p;
 
-    p = get_color(1); // white
+    p = horizontal_flip(get_color(1)); // white
     while(p)
     {
         one_p = lsb_board(p);
@@ -326,7 +351,7 @@ void Engine::print_char()
         b[(7-get_file(one_p))+8*(7-get_rank(one_p))] = 'W';
     }
 
-    p = get_color(0); // black
+    p = horizontal_flip(get_color(0)); // black
     while(p)
     {
         one_p = lsb_board(p);
@@ -334,7 +359,7 @@ void Engine::print_char()
         b[(7-get_file(one_p))+8*(7-get_rank(one_p))] = 'B';
     }
 
-    for(int i = 0; i<8; i++)
+    for(int i = 0; i < 8; i++)
     {
         for(int j = 0; j < 8; j++)
         {
@@ -462,18 +487,6 @@ U64 Engine::south_moves(U64 mine, U64 prop, U64 empty)
 U64 Engine::east_moves(U64 mine, U64 prop, U64 empty)
 {
     prop = prop & ~col_mask[7];
-    U64 moves = prop & (mine >> 1);
-    moves |= prop & (moves >> 1);
-    moves |= prop & (moves >> 1);
-    moves |= prop & (moves >> 1);
-    moves |= prop & (moves >> 1);
-    moves |= prop & (moves >> 1);
-    return empty & (moves >> 1);
-}
-
-U64 Engine::west_moves(U64 mine, U64 prop, U64 empty)
-{
-    prop = prop & ~col_mask[0];
     U64 moves = prop & (mine << 1);
     moves |= prop & (moves << 1);
     moves |= prop & (moves << 1);
@@ -481,6 +494,18 @@ U64 Engine::west_moves(U64 mine, U64 prop, U64 empty)
     moves |= prop & (moves << 1);
     moves |= prop & (moves << 1);
     return empty & (moves << 1);
+}
+
+U64 Engine::west_moves(U64 mine, U64 prop, U64 empty)
+{
+    prop = prop & ~col_mask[0];
+    U64 moves = prop & (mine >> 1);
+    moves |= prop & (moves >> 1);
+    moves |= prop & (moves >> 1);
+    moves |= prop & (moves >> 1);
+    moves |= prop & (moves >> 1);
+    moves |= prop & (moves >> 1);
+    return empty & (moves >> 1);
 }
 
 U64 Engine::diag_moves(int color)
@@ -492,42 +517,6 @@ U64 Engine::diag_moves(int color)
 U64 Engine::north_east_moves(U64 mine, U64 prop, U64 empty)
 {
     prop = prop & ~col_mask[7];
-    U64 moves = prop & (mine << 7);
-    moves |= prop & (moves << 7);
-    moves |= prop & (moves << 7);
-    moves |= prop & (moves << 7);
-    moves |= prop & (moves << 7);
-    moves |= prop & (moves << 7);
-    return empty & (moves << 7);
-}
-
-U64 Engine::south_east_moves(U64 mine, U64 prop, U64 empty)
-{
-    prop = prop & ~col_mask[7];
-    U64 moves = prop & (mine >> 9);
-    moves |= prop & (moves >> 9);
-    moves |= prop & (moves >> 9);
-    moves |= prop & (moves >> 9);
-    moves |= prop & (moves >> 9);
-    moves |= prop & (moves >> 9);
-    return empty & (moves >> 9);
-}
-
-U64 Engine::south_west_moves(U64 mine, U64 prop, U64 empty)
-{
-    prop = prop & ~col_mask[0];
-    U64 moves = prop & (mine >> 7);
-    moves |= prop & (moves >> 7);
-    moves |= prop & (moves >> 7);
-    moves |= prop & (moves >> 7);
-    moves |= prop & (moves >> 7);
-    moves |= prop & (moves >> 7);
-    return empty & (moves >> 7);
-}
-
-U64 Engine::north_west_moves(U64 mine, U64 prop, U64 empty)
-{
-    prop = prop & ~col_mask[0];
     U64 moves = prop & (mine << 9);
     moves |= prop & (moves << 9);
     moves |= prop & (moves << 9);
@@ -537,20 +526,60 @@ U64 Engine::north_west_moves(U64 mine, U64 prop, U64 empty)
     return empty & (moves << 9);
 }
 
+U64 Engine::south_east_moves(U64 mine, U64 prop, U64 empty)
+{
+    prop = prop & ~col_mask[7];
+    U64 moves = prop & (mine >> 7);
+    moves |= prop & (moves >> 7);
+    moves |= prop & (moves >> 7);
+    moves |= prop & (moves >> 7);
+    moves |= prop & (moves >> 7);
+    moves |= prop & (moves >> 7);
+    return empty & (moves >> 7);
+}
 
-U64 Engine::one_rook_attacks(U64 rook)
+U64 Engine::south_west_moves(U64 mine, U64 prop, U64 empty)
+{
+    prop = prop & ~col_mask[0];
+    U64 moves = prop & (mine >> 9);
+    moves |= prop & (moves >> 9);
+    moves |= prop & (moves >> 9);
+    moves |= prop & (moves >> 9);
+    moves |= prop & (moves >> 9);
+    moves |= prop & (moves >> 9);
+    return empty & (moves >> 9);
+}
+
+U64 Engine::north_west_moves(U64 mine, U64 prop, U64 empty)
+{
+    prop = prop & ~col_mask[0];
+    U64 moves = prop & (mine << 7);
+    moves |= prop & (moves << 7);
+    moves |= prop & (moves << 7);
+    moves |= prop & (moves << 7);
+    moves |= prop & (moves << 7);
+    moves |= prop & (moves << 7);
+    return empty & (moves << 7);
+}
+
+
+U64 Engine::one_rook_attacks(U64 rook, U64 occ)
 {
     int square = bitboard_to_square(rook);
-    U64 occ = get_all();
 
     U64 forward, reverse;
     forward  = occ & square_masks[square].file_mask_excluded;
+
+    // print_bit_rep(occ);
+    // printf("mask\n");
+    // print_bit_rep(square_masks[square].file_mask_excluded);
 
     reverse  = vertical_flip(forward);
     forward -= rook;
     reverse -= vertical_flip(rook);
     forward ^= vertical_flip(reverse);
     forward &= square_masks[square].file_mask_excluded;
+    // print_bit_rep(forward);
     return forward;
 }
 
