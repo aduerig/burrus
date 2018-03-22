@@ -32,6 +32,13 @@ int main()
     move_list++;
     for(int i = 0; i < num_moves; i++)
     {
+    	if(move_list[i] != 1703937)
+    	{
+    		continue;
+    	}
+    	printf("before\n");
+    	e->print_char();
+
     	printf("move %i, looks like\n", move_list[i]);
     	e->push_move(move_list[i]);
     	e->print_char();

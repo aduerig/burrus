@@ -297,6 +297,10 @@ void Engine::flip_stones(U64 stone, U64 own_occ, U64 opp_occ, int color)
 {
     U64 flippers = 0;
     U64 init_attacks = one_rook_attacks(stone, own_occ);
+
+    printf("init attacks\n");
+    print_bit_rep(init_attacks);
+    
     U64 pieces_in_los = init_attacks & own_occ;
     
     U64 other_attacks;
@@ -307,6 +311,9 @@ void Engine::flip_stones(U64 stone, U64 own_occ, U64 opp_occ, int color)
         popped_board = lsb_board(pieces_in_los);
         other_attacks = one_rook_attacks(popped_board, own_occ);
         pieces_in_los = pieces_in_los - popped_board;
+
+        printf("other attacks\n");
+        print_bit_rep(other_attacks);
 
         flippers = flippers | (other_attacks & init_attacks);
     }
@@ -574,12 +581,17 @@ U64 Engine::one_rook_attacks(U64 rook, U64 occ)
     // printf("mask\n");
     // print_bit_rep(square_masks[square].file_mask_excluded);
 
+    printf("occ\n");
+    print_bit_rep(occ);
+    printf("\n");
+
     reverse  = vertical_flip(forward);
     forward -= rook;
     reverse -= vertical_flip(rook);
     forward ^= vertical_flip(reverse);
     forward &= square_masks[square].file_mask_excluded;
-    // print_bit_rep(forward);
+    print_bit_rep(forward);
+    exit(0);
     return forward;
 }
 
