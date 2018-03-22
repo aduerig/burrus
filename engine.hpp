@@ -107,7 +107,8 @@ class Engine
 
         // terminating conditions
         int score_board();
-        int is_terminal(int* moves);
+        int get_winner();
+        int is_terminal(int* moves, int color);
 
         //move_gen
         U64 cardinal_moves(int color);

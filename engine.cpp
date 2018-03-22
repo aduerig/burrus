@@ -298,8 +298,8 @@ void Engine::flip_stones(U64 stone, U64 own_occ, U64 opp_occ, int color)
     U64 flippers = 0;
     U64 init_attacks = one_rook_attacks(stone, own_occ);
 
-    printf("init attacks\n");
-    print_bit_rep(init_attacks);
+    // printf("init attacks\n");
+    // print_bit_rep(init_attacks);
     
     U64 pieces_in_los = init_attacks & own_occ;
     
@@ -312,8 +312,8 @@ void Engine::flip_stones(U64 stone, U64 own_occ, U64 opp_occ, int color)
         other_attacks = one_rook_attacks(popped_board, own_occ);
         pieces_in_los = pieces_in_los - popped_board;
 
-        printf("other attacks\n");
-        print_bit_rep(other_attacks);
+        // printf("other attacks\n");
+        // print_bit_rep(other_attacks);
 
         flippers = flippers | (other_attacks & init_attacks);
     }
@@ -374,7 +374,6 @@ void Engine::print_char()
         }
         std::cout << std::endl;
     }
-
 }
 
 // East << 1
@@ -439,6 +438,23 @@ int Engine::score_board()
     return total;
 }
 
+int Engine::get_winner()
+{
+    int score = score_board();
+    if(score == 0)
+    {
+        return 2;
+    }
+    else if(score > 0)
+    {
+        return 1;
+    }
+    else
+    {
+        return 0;
+    }
+}
+
 
 //alternative method to scoring (probably faster)
 // http://chessprogramming.wikispaces.com/Population+Count#SWAR-Popcount-The%20PopCount%20routine
@@ -450,15 +466,22 @@ int Engine::score_board()
 //     return (int) x;
 // }
 
-// -1 for not over
+// 0 for not over
 // other numerals centered around 100
-int Engine::is_terminal(int* move_list)
+int Engine::is_terminal(int* move_list, int color)
 {
     if(move_list[0] == 0)
     {
-        return score_board();
+        int* other_moves = generate_moves(1-color);
+        int num_moves = other_moves[0];
+        free(other_moves);
+        if(num_moves == 0)
+        {
+            // return score_board();
+            return 1;
+        }
     }
-    return -1;
+    return 0;
 }
 
 
