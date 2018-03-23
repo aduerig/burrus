@@ -1,7 +1,7 @@
 // to compile:  g++ ../engine.hpp ../engine.cpp tests.cpp -std=c++14 -o test
 
 
-#include "engine.hpp"
+#include "../engine.hpp"
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
