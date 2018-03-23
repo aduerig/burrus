@@ -1,0 +1,39 @@
+For each test
+
+1) INPUT
+  A) Read test board state
+  B) Read correct list of move possibilities
+  C) Read correct board states for each move
+2) Set board state
+3) Get list of move possibilities
+  A) Compare list of move possibilities with correct list
+4) If 3A is all correct, make each move
+  A) Compare each move's next board state with correct board state
+5) If 3A is wrong, print out correct list, incorrect list, differences
+
+square numbers are as follows:
+
+56 57 58 59 60 61 62 63
+48 49 50 51 52 53 54 55
+40 41 42 43 44 45 46 47
+32 33 34 35 36 37 38 39
+24 25 26 27 28 29 30 31
+16 17 18 19 20 21 22 23
+8  9  10 11 12 13 14 15
+0  1  2  3  4  5  6  7
+
+each test file contains:
+first 8 lines:
+  8x8 board  
+    - for empty
+    B for black
+    W for white
+next 2 lines:
+  Black: <n_black_moves> <black_move_1> <black_move_2> ... <black_move_n>
+  White: <n_white_moves> <white_move_1> <white_move_2> ... <white_move_n>
+next is sets of 9 lines
+  first line simply has the square number for the move
+  following 8 is the board state after making that move
+  black moves first
+  white moves second
+  move order is numeric
