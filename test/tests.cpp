@@ -81,7 +81,7 @@ int main(int argc, char * argv[])
     char *fnm = (char *) calloc(30,sizeof(char));
 
     sprintf(fnm,"test%d.dat",i);
-cout << endl << "Test " << i << endl;
+    cout << endl << "Test " << i << endl;
     ifstream fpi(fnm);
     string line;
     e->reset_engine();
@@ -96,7 +96,7 @@ cout << endl << "Test " << i << endl;
 
 
 
-cout << "Board: " << endl;
+    cout << "Board: " << endl;
     e->print_char();
 
     vector<int> black_moves, white_moves;
