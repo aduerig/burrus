@@ -2,8 +2,10 @@
 #include "player.hpp"
 #include <stdio.h>
 #include <stdlib.h>
+#include <chrono>
 #include <iostream>
 #include <fstream>
+#include <vector>
 
 // g++ bitboard.hpp bitboard.cpp player.hpp player.cpp play.cpp -std=c++14 -o run
 
@@ -49,19 +51,12 @@ int play_game(Engine* e, std::vector<Player*> players, int* num_moves)
     int move;
     int* move_list;
 
-    while(1)
+    printf("inital board state\n");
+    e->print_char();
+
+    move_list = e->generate_moves(color);
+    while(e->is_not_terminal(move_list, color))
     {
-        move_list = e->generate_legal_moves(color);
-
-        term = e->is_terminal(color, move_list);
-        if(term)
-        {
-            int winner = get_winner();
-            std::cout << "game over, winner is: " << color_to_string(winner) << " in " << moves_made  << " moves" << std::endl;
-            e->print_char();
-            return(winner);
-        }
-
         std::cout << color_to_string(color) << " to move." << std::endl;
         std::cout <<  "moves avaliable: " << move_list[0] << std::endl;
         move = players[color]->move(move_list);
@@ -74,7 +69,12 @@ int play_game(Engine* e, std::vector<Player*> players, int* num_moves)
 
         moves_made++;
         color = 1-color;
+        move_list = e->generate_moves(color);
     }
+    int winner = e->get_winner();
+    std::cout << "game over, winner is: " << color_to_string(winner) << " in " << moves_made  << " moves" << std::endl;
+    e->print_char();
+    return winner;
 }
 
 
@@ -89,6 +89,8 @@ int main()
 
     std::chrono::time_point<std::chrono::system_clock> t1, t2;
     std::chrono::duration<double, std::nano> time_cast_result;
+
+    int* num_moves = (int*) malloc(sizeof(int));
 
     num_moves[0] = 0;
     t1 = std::chrono::system_clock::now();

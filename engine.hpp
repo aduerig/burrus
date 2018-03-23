@@ -108,7 +108,7 @@ class Engine
         // terminating conditions
         int score_board();
         int get_winner();
-        int is_terminal(int* moves, int color);
+        int is_not_terminal(int* moves, int color);
 
         //move_gen
         U64 cardinal_moves(int color);
@@ -124,6 +124,8 @@ class Engine
         U64 north_west_moves(U64 mine, U64 prop, U64 empty);
         
         U64 one_rook_attacks(U64 rook, U64 occ);
+        U64 one_bishop_attacks_ANTI(U64 bishop, int square, U64 occ);
+        U64 one_bishop_attacks(U64 bishop, U64 occ);
 
         // get rank/file/diag info
         int get_rank(U64 num);
@@ -148,6 +150,7 @@ class Engine
 
         int board_stack_index;
         U64* board_stack;
+        int pass_counter = 0;
 
         precomputed_masks square_masks[64];
 

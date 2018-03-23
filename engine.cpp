@@ -76,9 +76,6 @@ void Engine::fill_square_masks()
     for(int i = 0; i < 64; i++)
     {
         temp = 1ULL << i;
-        // printf("%i\n", i);
-        // print_bit_rep(temp);
-
 
         int diag = get_diag(get_rank(temp), get_file(temp));
         int left_diag = diag >> 5;
@@ -89,7 +86,8 @@ void Engine::fill_square_masks()
         square_masks[i].left_diag_mask_excluded = ~temp & diag_left_mask[left_diag];
         square_masks[i].right_diag_mask_excluded = ~temp & diag_right_mask[right_diag];
         square_masks[i].file_mask_excluded = ~temp & col_mask[get_file(temp)];
-        // print_bit_rep(square_masks[i].file_mask_excluded);
+        // printf("\n");
+        // print_bit_rep(square_masks[i].left_diag_mask_excluded);
     }
     // exit(0);
 }
@@ -278,9 +276,19 @@ int Engine::decode_loc(int move)
 // Takes in a move, alters the BitboardEngine's representation to the NEXT state based on the CURRENT move action
 void Engine::push_move(int move)
 {
+    if(move == -1)
+    {
+        pass_counter++;
+        return;
+    }
+    pass_counter = 0;
     stack_push();
+
     int color = decode_color(move);
     int stone_loc = decode_loc(move);
+
+    // printf("moves\n");
+    // print_bit_rep(1ULL << stone_loc);
 
     U64 stone = square_to_bitboard(stone_loc);
     pos.board[color] = stone | pos.board[color]; // put move on board
@@ -296,30 +304,41 @@ void Engine::pop_move()
 void Engine::flip_stones(U64 stone, U64 own_occ, U64 opp_occ, int color)
 {
     U64 flippers = 0;
-    U64 init_attacks = one_rook_attacks(stone, own_occ);
+    U64 init_rook_attacks = one_rook_attacks(stone, own_occ);
+    U64 init_bishop_attacks = one_bishop_attacks(stone, own_occ);
 
     // printf("init attacks\n");
     // print_bit_rep(init_attacks);
     
-    U64 pieces_in_los = init_attacks & own_occ;
+    U64 card_los = init_rook_attacks & own_occ;
+    U64 diag_los = init_bishop_attacks & own_occ;
     
     U64 other_attacks;
     U64 popped_board;
 
-    while(pieces_in_los)
+    while(card_los)
     {
-        popped_board = lsb_board(pieces_in_los);
+        popped_board = lsb_board(card_los);
         other_attacks = one_rook_attacks(popped_board, own_occ);
-        pieces_in_los = pieces_in_los - popped_board;
+        card_los = card_los - popped_board;
 
-        // printf("other attacks\n");
-        // print_bit_rep(other_attacks);
-
-        flippers = flippers | (other_attacks & init_attacks);
+        flippers = flippers | (other_attacks & init_rook_attacks);
     }
 
+    while(diag_los)
+    {
+        popped_board = lsb_board(diag_los);
+        other_attacks = one_bishop_attacks(popped_board, own_occ);
+        diag_los = diag_los - popped_board;
+
+        flippers = flippers | (other_attacks & init_bishop_attacks);
+    }
+
+    // printf("\nflippers\n");
+    // print_bit_rep(flippers);
+
     pos.board[color] = pos.board[color] | (flippers & opp_occ);
-    pos.board[1-color] = pos.board[1-color] - flippers;
+    pos.board[1-color] = pos.board[1-color] & ~flippers;
 }
 
 void Engine::print_bit_rep(U64 board)
@@ -468,20 +487,24 @@ int Engine::get_winner()
 
 // 0 for not over
 // other numerals centered around 100
-int Engine::is_terminal(int* move_list, int color)
+int Engine::is_not_terminal(int* move_list, int color)
 {
     if(move_list[0] == 0)
     {
-        int* other_moves = generate_moves(1-color);
-        int num_moves = other_moves[0];
-        free(other_moves);
-        if(num_moves == 0)
-        {
+        // int* other_moves = generate_moves(1-color);
+        // int num_moves = other_moves[0];
+        // free(other_moves);
+        // if(num_moves == 0)
+        // {
             // return score_board();
-            return 1;
+            // return 1;
+        // }
+        if(pass_counter == 2)
+        {
+            return 0;
         }
     }
-    return 0;
+    return 1;
 }
 
 
@@ -609,6 +632,42 @@ U64 Engine::one_rook_attacks(U64 rook, U64 o)
     vert = vert & col_mask[col];
 
     return(hori | vert);
+}
+
+
+U64 Engine::one_bishop_attacks_ANTI(U64 bishop, int square, U64 occ)
+{
+    U64 line_mask = square_masks[square].right_diag_mask_excluded; // excludes square of slider
+
+    U64 forward = occ & line_mask; // also performs the first subtraction by clearing the s in o
+    U64 reverse = vertical_flip(forward); // o'-s'
+
+    forward = forward - bishop; // o -2s
+    reverse = reverse - vertical_flip(bishop); // o'-2s'
+    forward = forward ^ vertical_flip(reverse);
+    return forward & line_mask;      // mask the line again
+}
+
+
+U64 Engine::one_bishop_attacks(U64 bishop, U64 occ)
+{
+    int square = bitboard_to_square(bishop);
+
+    U64 line_mask = square_masks[square].left_diag_mask_excluded; // excludes square of slider
+
+    U64 forward = occ & line_mask; // also performs the first subtraction by clearing the s in o
+    U64 reverse = vertical_flip(forward); // o'-s'
+
+    forward = forward - bishop; // o -2s
+    reverse = reverse - vertical_flip(bishop); // o'-2s'
+    forward = forward ^ vertical_flip(reverse);
+
+    U64 attks = one_bishop_attacks_ANTI(bishop, square, occ) | (forward & line_mask);
+
+    // printf("\nbishop attks\n");
+    // print_bit_rep(attks);
+
+    return attks;      // mask the line again
 }
 
 
