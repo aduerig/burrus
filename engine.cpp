@@ -24,7 +24,7 @@ void Engine::init_engine()
     move_arr_size = 64; // This assumes there are only 64 possible legal moves at any one time (affects move array intilization)
 
     board_stack = (U64*) malloc(3 * (max_move_length + 1) * sizeof(U64));
-    board_stack_index = -2;
+    board_stack_index = -3;
 
     move_list = (int*) malloc(move_arr_size * sizeof(int));
 
