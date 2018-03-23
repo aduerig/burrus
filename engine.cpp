@@ -35,7 +35,7 @@ void Engine::init_engine()
 
 void Engine::reset_engine()
 {
-    board_stack_index = -2;
+    board_stack_index = -3;
     init_position();
 }
 
