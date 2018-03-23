@@ -23,7 +23,7 @@ void Engine::init_engine()
     max_move_length = 70; // game depth
     move_arr_size = 64; // This assumes there are only 64 possible legal moves at any one time (affects move array intilization)
 
-    board_stack = (U64*) malloc(2*(max_move_length + 1) * sizeof(U64));
+    board_stack = (U64*) malloc(3 * (max_move_length + 1) * sizeof(U64));
     board_stack_index = -2;
 
     move_list = (int*) malloc(move_arr_size * sizeof(int));
@@ -45,20 +45,22 @@ void Engine::clean_up()
     free(board_stack);
     free(row_mask);
     free(col_mask);
+    free(inv_row_mask);
+    free(inv_col_mask);
     free(diag_left_mask);
     free(diag_right_mask);
 }
 
 void Engine::init_position()
 {
-    pos.board[0] = 0b0000000000000000000000000001000000001000000000000000000000000000ULL;
-    pos.board[1] = 0b0000000000000000000000000000100000010000000000000000000000000000ULL;
+    pos.black_board = 0b0000000000000000000000000001000000001000000000000000000000000000ULL;
+    pos.white_board = 0b0000000000000000000000000000100000010000000000000000000000000000ULL;
 }
 
 void Engine::init_position(U64 *board_data)
 {
-    pos.board[0] = board_data[0];
-    pos.board[1] = board_data[1];
+    pos.black_board = board_data[0];
+    pos.white_board = board_data[1];
 }
 
 void Engine::init_lsb_lookup()
@@ -84,6 +86,9 @@ void Engine::fill_square_masks()
         square_masks[i].left_diag_mask_excluded = ~temp & diag_left_mask[left_diag];
         square_masks[i].right_diag_mask_excluded = ~temp & diag_right_mask[right_diag];
         square_masks[i].file_mask_excluded = ~temp & col_mask[get_file(temp)];
+
+        square_masks[i].file_mask = col_mask[get_file(temp)];
+        square_masks[i].rank_mask = row_mask[get_rank(temp)];
         // printf("\n");
         // print_bit_rep(square_masks[i].left_diag_mask_excluded);
     }
@@ -91,11 +96,24 @@ void Engine::fill_square_masks()
 
 void Engine::init_masks()
 {
-    row_mask = (U64*) malloc(8 * sizeof(U64));    
+    row_mask = (U64*) malloc(8 * sizeof(U64));  
     fill_row_mask_arr();
 
     col_mask = (U64*) malloc(8 * sizeof(U64));
     fill_col_mask_arr();
+
+    inv_row_mask = (U64*) malloc(8 * sizeof(U64));  
+    inv_col_mask = (U64*) malloc(8 * sizeof(U64));
+
+    for(int i = 0; i < 8; i++)
+    {
+        inv_row_mask[i] = ~row_mask[i];
+    }
+
+    for(int i = 0; i < 8; i++)
+    {
+        inv_col_mask[i] = ~col_mask[i];
+    }
 
     // Diag left masks start on left side and moves from left to right, top to bottom
     // [0] corresponds to bottom left corner
@@ -219,14 +237,14 @@ int Engine::get_max_move_length()
     return max_move_length;
 }
 
-U64 Engine::get_color(int color)
-{
-    return *(pos.board + color);
-}
+// U64 Engine::get_color(int color)
+// {
+//     return *(pos.board + color);
+// }
 
 U64 Engine::get_all()
 {
-    return get_color(0) | get_color(1);
+    return pos.white_board | pos.black_board;
 }
 
 
@@ -240,9 +258,10 @@ void Engine::print_move_info(int move)
 // Alters the move stack and stack_index value
 void Engine::stack_push()
 {
-    board_stack_index += 2;
-    board_stack[board_stack_index] = pos.board[0];
-    board_stack[board_stack_index+1] = pos.board[1];
+    board_stack_index += 3;
+    board_stack[board_stack_index] = pos.black_board;
+    board_stack[board_stack_index+1] = pos.white_board;
+    board_stack[board_stack_index+2] = pos.pass_counter;
 }
 
 // Takes in nothing
@@ -250,46 +269,43 @@ void Engine::stack_push()
 // Alters the stack_index value
 void Engine::stack_pop()
 {
-    pos.board[0] = board_stack[board_stack_index];
-    pos.board[1] = board_stack[board_stack_index+1];
-    board_stack_index -= 2;
-}
-
-int Engine::encode_move(int stone_square, int color)
-{
-    return stone_square << 16 | color;
-}
-
-int Engine::decode_color(int move)
-{
-    return move & 1;
-}
-
-int Engine::decode_loc(int move)
-{
-    return move >> 16;
+    pos.black_board = board_stack[board_stack_index];
+    pos.white_board = board_stack[board_stack_index+1];
+    pos.pass_counter = board_stack[board_stack_index+2];
+    board_stack_index -= 3;
 }
 
 // Takes in a move, alters the BitboardEngine's representation to the NEXT state based on the CURRENT move action
-void Engine::push_move(int move)
+void Engine::push_white_move(int move)
 {
     if(move == -1)
     {
-        pass_counter++;
+        pos.pass_counter++;
+        stack_push();
         return;
     }
-    pass_counter = 0;
+    pos.pass_counter = 0ULL;
     stack_push();
 
-    int color = decode_color(move);
-    int stone_loc = decode_loc(move);
+    U64 stone = square_to_bitboard(move);
+    pos.white_board = stone | pos.white_board; // put move on board
+    flip_white_stones(stone, move, pos.white_board, pos.black_board);
+}
 
-    // printf("moves\n");
-    // print_bit_rep(1ULL << stone_loc);
+void Engine::push_black_move(int move)
+{
+    if(move == -1)
+    {
+        pos.pass_counter++;
+        stack_push();
+        return;
+    }
+    pos.pass_counter = 0ULL;
+    stack_push();
 
-    U64 stone = square_to_bitboard(stone_loc);
-    pos.board[color] = stone | pos.board[color]; // put move on board
-    flip_stones(stone, get_color(color), get_color(1-color), color);
+    U64 stone = square_to_bitboard(move);
+    pos.black_board = stone | pos.black_board; // put move on board
+    flip_black_stones(stone, move, pos.black_board, pos.white_board);
 }
 
 // Takes in a move, alters the BitboardEngine's representation to the PREVIOUS state based on the LAST move action
@@ -338,12 +354,37 @@ void Engine::pop_move()
 //     pos.board[1-color] = pos.board[1-color] & ~flippers;
 // }
 
-void Engine::flip_stones(U64 stone, U64 own_occ, U64 opp_occ, int color)
+// void Engine::flip_stones(U64 stone, U64 own_occ, U64 opp_occ, int color)
+// {
+//     U64 flippers = 0;
+
+//     U64 inv_opp_occ = ~opp_occ;
+//     U64 init_rook_attacks = one_rook_attacks(stone, inv_opp_occ);
+//     U64 init_bishop_attacks = one_bishop_attacks(stone, inv_opp_occ);
+
+//     U64 card_los = init_rook_attacks & own_occ;
+//     U64 diag_los = init_bishop_attacks & own_occ;
+
+//     // other_attacks = all_rook_attacks(card_los, ~own_occ);
+//     flippers |= all_rook_attacks(card_los, opp_occ) & init_rook_attacks;
+
+
+//     // other_attacks = all_bishop_attacks(diag_los, ~own_occ);
+//     flippers |= all_bishop_attacks(diag_los, opp_occ) & init_bishop_attacks;
+
+
+//     pos.board[color] |= flippers & opp_occ;
+//     pos.board[1-color] &= ~flippers;
+// }
+
+
+void Engine::flip_white_stones(U64 stone, int square, U64 own_occ, U64 opp_occ)
 {
     U64 flippers = 0;
 
     U64 inv_opp_occ = ~opp_occ;
-    U64 init_rook_attacks = one_rook_attacks(stone, inv_opp_occ);
+    // U64 init_rook_attacks = one_rook_attacks(stone, inv_opp_occ, square);
+    U64 init_rook_attacks = all_rook_attacks(stone, opp_occ);
     U64 init_bishop_attacks = one_bishop_attacks(stone, inv_opp_occ);
 
     U64 card_los = init_rook_attacks & own_occ;
@@ -357,8 +398,32 @@ void Engine::flip_stones(U64 stone, U64 own_occ, U64 opp_occ, int color)
     flippers |= all_bishop_attacks(diag_los, opp_occ) & init_bishop_attacks;
 
 
-    pos.board[color] |= flippers & opp_occ;
-    pos.board[1-color] &= ~flippers;
+    pos.white_board |= flippers & opp_occ;
+    pos.black_board &= ~flippers;
+}
+
+void Engine::flip_black_stones(U64 stone, int square, U64 own_occ, U64 opp_occ)
+{
+    U64 flippers = 0;
+
+    U64 inv_opp_occ = ~opp_occ;
+    // U64 init_rook_attacks = one_rook_attacks(stone, inv_opp_occ, square);
+    U64 init_rook_attacks = all_rook_attacks(stone, opp_occ);
+    U64 init_bishop_attacks = one_bishop_attacks(stone, inv_opp_occ);
+
+    U64 card_los = init_rook_attacks & own_occ;
+    U64 diag_los = init_bishop_attacks & own_occ;
+
+    // other_attacks = all_rook_attacks(card_los, ~own_occ);
+    flippers |= all_rook_attacks(card_los, opp_occ) & init_rook_attacks;
+
+
+    // other_attacks = all_bishop_attacks(diag_los, ~own_occ);
+    flippers |= all_bishop_attacks(diag_los, opp_occ) & init_bishop_attacks;
+
+
+    pos.black_board |= flippers & opp_occ;
+    pos.white_board &= ~flippers;
 }
 
 void Engine::print_bit_rep(U64 board)
@@ -389,7 +454,7 @@ void Engine::print_char()
     U64 p;
     U64 one_p;
 
-    p = horizontal_flip(get_color(1)); // white
+    p = horizontal_flip(pos.white_board); // white
     while(p)
     {
         one_p = lsb_board(p);
@@ -397,7 +462,7 @@ void Engine::print_char()
         b[(7-get_file(one_p))+8*(7-get_rank(one_p))] = 'W';
     }
 
-    p = horizontal_flip(get_color(0)); // black
+    p = horizontal_flip(pos.black_board); // black
     while(p)
     {
         one_p = lsb_board(p);
@@ -435,21 +500,37 @@ U64 Engine::square_to_bitboard(int square)
 }
 
 // Generates and returns a list of legal moves for a color
-int* Engine::generate_moves(int color)
+int* Engine::generate_white_moves()
 {
     move_list[0] = 0; // encode index in array
 
-    U64 possible_moves = cardinal_moves(color) | diag_moves(color);
+    U64 possible_moves = cardinal_white_moves() | diag_white_moves();
     U64 temp;
 
     while(possible_moves)
     {
         temp = lsb_board(possible_moves);
-        move_list[move_list[0]+1] = encode_move(bitboard_to_square(temp), color);
+        move_list[move_list[0]+1] = bitboard_to_square(temp);
         move_list[0]++;
         possible_moves = possible_moves - temp;
     }
+    return move_list;
+}
 
+int* Engine::generate_black_moves()
+{
+    move_list[0] = 0; // encode index in array
+
+    U64 possible_moves = cardinal_black_moves() | diag_black_moves();
+    U64 temp;
+
+    while(possible_moves)
+    {
+        temp = lsb_board(possible_moves);
+        move_list[move_list[0]+1] = bitboard_to_square(temp);
+        move_list[0]++;
+        possible_moves = possible_moves - temp;
+    }
     return move_list;
 }
 
@@ -457,8 +538,8 @@ int Engine::score_board()
 {
     int total = 0;
     U64 temp;
-    U64 white = get_color(1);
-    U64 black = get_color(0);
+    U64 white = pos.white_board;
+    U64 black = pos.black_board;
 
     while(white)
     {
@@ -509,7 +590,7 @@ int Engine::is_not_terminal(int* move_list, int color)
 {
     if(move_list[0] == 0)
     {
-        if(pass_counter == 2)
+        if(pos.pass_counter == 2ULL)
         {
             return 0;
         }
@@ -517,22 +598,31 @@ int Engine::is_not_terminal(int* move_list, int color)
     return 1;
 }
 
-
-U64 Engine::one_rook_attacks(U64 rook, U64 o)
+int Engine::is_terminal(int* move_list, int color)
 {
-    U64 row = get_rank(rook);
-    U64 col = get_file(rook);
+    if(move_list[0] == 0)
+    {
+        if(pos.pass_counter == 2ULL)
+        {
+            return 1;
+        }
+    }
+    return 0;
+}
 
+
+U64 Engine::one_rook_attacks(U64 rook, U64 o, int square)
+{
     U64 o_rev = reverse_64_bits(o);
     U64 s_rev = reverse_64_bits(rook);
 
     U64 hori = (o - 2*rook) ^ reverse_64_bits(o_rev - 2*s_rev);
-    hori = hori & row_mask[row];
+    hori = hori & square_masks[square].rank_mask;
 
-    U64 o_mask = o & col_mask[col];
+    U64 o_mask = o & square_masks[square].file_mask;
     U64 o_rev_mask = reverse_64_bits(o_mask);
     U64 vert = (o_mask - 2*rook) ^ reverse_64_bits(o_rev_mask - 2*s_rev);
-    vert = vert & col_mask[col];
+    vert = vert & square_masks[square].file_mask;
 
     return(hori | vert);
 }
@@ -843,10 +933,24 @@ U64 Engine::vertical_flip(U64 x)
 
 
 // move gen
-U64 Engine::cardinal_moves(int color)
+// U64 Engine::cardinal_moves(int color)
+// {
+//     return north_moves(get_color(color), get_color(1-color), ~get_all()) | south_moves(get_color(color), get_color(1-color), ~get_all()) |
+//            east_moves(get_color(color), get_color(1-color), ~get_all()) | west_moves(get_color(color), get_color(1-color), ~get_all());
+// }
+
+U64 Engine::cardinal_white_moves()
 {
-    return north_moves(get_color(color), get_color(1-color), ~get_all()) | south_moves(get_color(color), get_color(1-color), ~get_all()) |
-           east_moves(get_color(color), get_color(1-color), ~get_all()) | west_moves(get_color(color), get_color(1-color), ~get_all());
+    U64 inv_get_all = ~get_all();
+    return north_moves(pos.white_board, pos.black_board, inv_get_all) | south_moves(pos.white_board, pos.black_board, inv_get_all) |
+           east_moves(pos.white_board, pos.black_board, inv_get_all) | west_moves(pos.white_board, pos.black_board, inv_get_all);
+}
+
+U64 Engine::cardinal_black_moves()
+{
+    U64 inv_get_all = ~get_all();
+    return north_moves(pos.black_board, pos.white_board, inv_get_all) | south_moves(pos.black_board, pos.white_board, inv_get_all) |
+           east_moves(pos.black_board, pos.white_board, inv_get_all) | west_moves(pos.black_board, pos.white_board, inv_get_all);
 }
 
 U64 Engine::north_moves(U64 mine, U64 prop, U64 empty)
@@ -873,7 +977,7 @@ U64 Engine::south_moves(U64 mine, U64 prop, U64 empty)
 
 U64 Engine::east_moves(U64 mine, U64 prop, U64 empty)
 {
-    prop = prop & ~col_mask[7];
+    prop = prop & inv_col_mask[7];
     U64 moves = prop & (mine << 1);
     moves |= prop & (moves << 1);
     moves |= prop & (moves << 1);
@@ -885,7 +989,7 @@ U64 Engine::east_moves(U64 mine, U64 prop, U64 empty)
 
 U64 Engine::west_moves(U64 mine, U64 prop, U64 empty)
 {
-    prop = prop & ~col_mask[0];
+    prop = prop & inv_col_mask[0];
     U64 moves = prop & (mine >> 1);
     moves |= prop & (moves >> 1);
     moves |= prop & (moves >> 1);
@@ -895,15 +999,30 @@ U64 Engine::west_moves(U64 mine, U64 prop, U64 empty)
     return empty & (moves >> 1);
 }
 
-U64 Engine::diag_moves(int color)
+// U64 Engine::diag_moves(int color)
+// {
+//     return north_east_moves(get_color(color), get_color(1-color), ~get_all()) | south_east_moves(get_color(color), get_color(1-color), ~get_all()) |
+//            south_west_moves(get_color(color), get_color(1-color), ~get_all()) | north_west_moves(get_color(color), get_color(1-color), ~get_all());
+// }
+
+U64 Engine::diag_white_moves()
 {
-    return north_east_moves(get_color(color), get_color(1-color), ~get_all()) | south_east_moves(get_color(color), get_color(1-color), ~get_all()) |
-           south_west_moves(get_color(color), get_color(1-color), ~get_all()) | north_west_moves(get_color(color), get_color(1-color), ~get_all());
+    U64 inv_get_all = ~get_all();
+    return north_east_moves(pos.white_board, pos.black_board, inv_get_all) | south_east_moves(pos.white_board, pos.black_board, inv_get_all) |
+           south_west_moves(pos.white_board, pos.black_board, inv_get_all) | north_west_moves(pos.white_board, pos.black_board, inv_get_all);
 }
+
+U64 Engine::diag_black_moves()
+{
+    U64 inv_get_all = ~get_all();
+    return north_east_moves(pos.black_board, pos.white_board, inv_get_all) | south_east_moves(pos.black_board, pos.white_board, inv_get_all) |
+           south_west_moves(pos.black_board, pos.white_board, inv_get_all) | north_west_moves(pos.black_board, pos.white_board, inv_get_all);
+}
+
 
 U64 Engine::north_east_moves(U64 mine, U64 prop, U64 empty)
 {
-    prop = prop & ~col_mask[7];
+    prop = prop & inv_col_mask[7];
     U64 moves = prop & (mine << 9);
     moves |= prop & (moves << 9);
     moves |= prop & (moves << 9);
@@ -915,7 +1034,7 @@ U64 Engine::north_east_moves(U64 mine, U64 prop, U64 empty)
 
 U64 Engine::south_east_moves(U64 mine, U64 prop, U64 empty)
 {
-    prop = prop & ~col_mask[7];
+    prop = prop & inv_col_mask[7];
     U64 moves = prop & (mine >> 7);
     moves |= prop & (moves >> 7);
     moves |= prop & (moves >> 7);
@@ -927,7 +1046,7 @@ U64 Engine::south_east_moves(U64 mine, U64 prop, U64 empty)
 
 U64 Engine::south_west_moves(U64 mine, U64 prop, U64 empty)
 {
-    prop = prop & ~col_mask[0];
+    prop = prop & inv_col_mask[0];
     U64 moves = prop & (mine >> 9);
     moves |= prop & (moves >> 9);
     moves |= prop & (moves >> 9);
@@ -939,7 +1058,7 @@ U64 Engine::south_west_moves(U64 mine, U64 prop, U64 empty)
 
 U64 Engine::north_west_moves(U64 mine, U64 prop, U64 empty)
 {
-    prop = prop & ~col_mask[0];
+    prop = prop & inv_col_mask[0];
     U64 moves = prop & (mine << 7);
     moves |= prop & (moves << 7);
     moves |= prop & (moves << 7);
@@ -972,7 +1091,7 @@ U64 Engine::vert_flood(U64 rooks, U64 prop)
 
 U64 Engine::hori_flood(U64 rooks, U64 prop)
 {
-    return(east_flood(rooks, prop & ~col_mask[7]) | west_flood(rooks, prop & ~col_mask[0]));
+    return(east_flood(rooks, prop & inv_col_mask[7]) | west_flood(rooks, prop & inv_col_mask[0]));
 }
 
 
@@ -1004,89 +1123,89 @@ U64 Engine::south_flood(U64 rooks, U64 prop)
 U64 Engine::east_flood(U64 rooks, U64 prop)
 {
     U64 east_flood = 0;
-    rooks = rooks & ~col_mask[7];
+    rooks = rooks & inv_col_mask[7];
 
     while(rooks) 
     {
         east_flood = east_flood | rooks;
         rooks = (rooks << 1) & prop;
     }
-    return((east_flood & ~col_mask[7]) << 1);
+    return((east_flood & inv_col_mask[7]) << 1);
 }
 
 U64 Engine::west_flood(U64 rooks, U64 prop)
 {
     U64 west_flood = 0;
-    rooks = rooks & ~col_mask[0];
+    rooks = rooks & inv_col_mask[0];
 
     while(rooks) 
     {
         west_flood = west_flood | rooks;
         rooks = (rooks >> 1) & prop;
     }
-    return((west_flood & ~col_mask[0]) >> 1);
+    return((west_flood & inv_col_mask[0]) >> 1);
 }
 
 
 U64 Engine::left_diag_flood(U64 bishops, U64 prop)
 {
-    return(north_west_flood(bishops, prop & ~col_mask[0]) | south_east_flood(bishops, prop & ~col_mask[7]));
+    return(north_west_flood(bishops, prop & inv_col_mask[0]) | south_east_flood(bishops, prop & inv_col_mask[7]));
 }
 
 U64 Engine::right_diag_flood(U64 bishops, U64 prop)
 {
-    return(north_east_flood(bishops, prop & ~col_mask[7]) | south_west_flood(bishops, prop & ~col_mask[0]));
+    return(north_east_flood(bishops, prop & inv_col_mask[7]) | south_west_flood(bishops, prop & inv_col_mask[0]));
 }
 
 
 U64 Engine::north_east_flood(U64 bishops, U64 prop)
 {
     U64 east_flood = 0;
-    bishops = bishops & ~col_mask[7];
+    bishops = bishops & inv_col_mask[7];
 
     while(bishops) 
     {
         east_flood = east_flood | bishops;
         bishops = (bishops << 9) & prop;
     }
-    return((east_flood & ~col_mask[7]) << 9);
+    return((east_flood & inv_col_mask[7]) << 9);
 }
 
 U64 Engine::south_east_flood(U64 bishops, U64 prop)
 {
     U64 east_flood = 0;
-    bishops = bishops & ~col_mask[7];
+    bishops = bishops & inv_col_mask[7];
 
     while(bishops) 
     {
         east_flood = east_flood | bishops;
         bishops = (bishops >> 7) & prop;
     }
-    return((east_flood & ~col_mask[7]) >> 7);
+    return((east_flood & inv_col_mask[7]) >> 7);
 }
 
 U64 Engine::south_west_flood(U64 bishops, U64 prop)
 {
     U64 west_flood = 0;
-    bishops = bishops & ~col_mask[0];
+    bishops = bishops & inv_col_mask[0];
 
     while(bishops) 
     {
         west_flood = west_flood | bishops;
         bishops = (bishops >> 9) & prop;
     }
-    return((west_flood & ~col_mask[0]) >> 9);
+    return((west_flood & inv_col_mask[0]) >> 9);
 }
 
 U64 Engine::north_west_flood(U64 bishops, U64 prop)
 {
     U64 west_flood = 0;
-    bishops = bishops & ~col_mask[0];
+    bishops = bishops & inv_col_mask[0];
 
     while(bishops) 
     {
         west_flood = west_flood | bishops;
         bishops = (bishops << 7) & prop;
     }
-    return((west_flood & ~col_mask[0]) << 7);
+    return((west_flood & inv_col_mask[0]) << 7);
 }

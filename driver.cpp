@@ -23,20 +23,20 @@ int main()
     // std::cout << "cardinal_moves for white" << std::endl;
     // e->print_bit_rep(e->cardinal_moves(1));
 
-    printf("all possible white move squares\n");
-    e->print_bit_rep(e->cardinal_moves(1) | e->diag_moves(1));
+    // printf("all possible white move squares\n");
+    // e->print_bit_rep(e->cardinal_moves(1) | e->diag_moves(1));
 
-    printf("moves for white\n");
-    int* move_list = e->generate_moves(1);
-    int num_moves = move_list[0];
-    move_list++;
-    for(int i = 0; i < num_moves; i++)
-    {
-        printf("move %i, looks like\n", move_list[i]);
-        e->push_move(move_list[i]);
-        e->print_char();
-        e->pop_move();
-    }
+    // printf("moves for white\n");
+    // int* move_list = e->generate_moves(1);
+    // int num_moves = move_list[0];
+    // move_list++;
+    // for(int i = 0; i < num_moves; i++)
+    // {
+    //     printf("move %i, looks like\n", move_list[i]);
+    //     e->push_move(move_list[i]);
+    //     e->print_char();
+    //     e->pop_move();
+    // }
 
     printf("finished driver\n");
 

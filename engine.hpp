@@ -10,12 +10,10 @@
 
 typedef unsigned long long U64;
 
-enum MoveType
-{
-    REGULAR = 0,
-    CASTLE = 1,
-    ENPASSANT = 2,
-    PROMOTION = 3
+enum Color
+{   
+    BLACK = 0,
+    WHITE = 1
 };
 
 // encoding board as 2 element u64 array for ease of indexing later
@@ -23,7 +21,10 @@ struct position
 {
     // U64 black;
     // U64 white;
-    U64 board[2]; // first black, then white
+    // U64 board[2]; // first black, then white
+    U64 white_board;
+    U64 black_board;
+    U64 pass_counter = 0;
 };
 
 struct precomputed_masks
@@ -31,6 +32,8 @@ struct precomputed_masks
    U64 left_diag_mask_excluded;
    U64 right_diag_mask_excluded;
    U64 file_mask_excluded;
+   U64 file_mask;
+   U64 rank_mask;
 };
 
 
@@ -46,14 +49,20 @@ class Engine
 
         U64 *row_mask;
         U64 *col_mask;
+
+        U64 *inv_row_mask;
+        U64 *inv_col_mask;
+
         U64 *diag_left_mask;
         U64 *diag_right_mask;
 
         // pushing and popping moves from stack
 
-        void push_move(int move);
+        void push_white_move(int move);
+        void push_black_move(int move);
         void pop_move();
-        void flip_stones(U64 stone, U64 own_occ, U64 opp_occ, int color);
+        void flip_white_stones(U64 stone, int square, U64 own_occ, U64 opp_occ);
+        void flip_black_stones(U64 stone, int square, U64 own_occ, U64 opp_occ);
 
         //printing
         void print_bit_rep(U64 num);
@@ -94,26 +103,24 @@ class Engine
         void stack_push();
         void stack_pop();
 
-        int encode_move(U64 stone_square, int color);
-        int decode_color(int move);
-        int decode_loc(int move);
-
         // board helper functions
         int bitboard_to_square(U64 piece);
         U64 square_to_bitboard(int square);
 
         //move gen helpers
         bool check_legal(int move, int color);
-        int* generate_moves(int color);
+        int* generate_white_moves();
+        int* generate_black_moves();
 
         // terminating conditions
         int score_board();
         int get_winner();
         int is_not_terminal(int* moves, int color);
+        int is_terminal(int* moves, int color);
 
         //move_gen
         
-        U64 one_rook_attacks(U64 rook, U64 occ);
+        U64 one_rook_attacks(U64 rook, U64 occ, int square);
         U64 one_bishop_attacks_ANTI(U64 bishop, int square, U64 occ);
         U64 one_bishop_attacks(U64 bishop, U64 occ);
 
@@ -135,13 +142,15 @@ class Engine
         U64 vertical_flip(U64 x);
 
         
-        U64 cardinal_moves(int color);
+        U64 cardinal_black_moves();
+        U64 cardinal_white_moves();
         U64 north_moves(U64 mine, U64 prop, U64 empty);        
         U64 south_moves(U64 mine, U64 prop, U64 empty);
         U64 east_moves(U64 mine, U64 prop, U64 empty);
         U64 west_moves(U64 mine, U64 prop, U64 empty);
 
-        U64 diag_moves(int color);
+        U64 diag_white_moves();
+        U64 diag_black_moves();
         U64 north_east_moves(U64 mine, U64 prop, U64 empty);        
         U64 south_east_moves(U64 mine, U64 prop, U64 empty);
         U64 south_west_moves(U64 mine, U64 prop, U64 empty);
@@ -149,7 +158,7 @@ class Engine
 
 
         //floods
-        
+
         U64 all_rook_attacks(U64 rook, U64 occ);
         U64 all_bishop_attacks(U64 rook, U64 occ);
 
@@ -175,7 +184,6 @@ class Engine
 
         int board_stack_index;
         U64* board_stack;
-        int pass_counter = 0;
 
         int* move_list;
 

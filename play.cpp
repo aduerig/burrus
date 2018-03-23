@@ -45,31 +45,45 @@ std::chrono::duration<double, std::nano> cast_nano(std::chrono::duration<double>
 
 int play_game(Engine* e, std::vector<Player*> players, int* num_moves)
 {
-    int moves_made = 0;
-    int color = 1;
-    int term;
     int move;
     int* move_list;
 
     // printf("inital board state\n");
     // e->print_char();
 
-    move_list = e->generate_moves(color);
-    while(e->is_not_terminal(move_list, color))
+    move_list = e->generate_black_moves();
+    while(e->is_not_terminal(move_list, BLACK))
     {
-        // std::cout << color_to_string(color) << " to move." << std::endl;
+        // BLACKS MOVE
+
+        // std::cout << color_to_string(BLACK) << " to move." << std::endl;
         // std::cout <<  "moves avaliable: " << move_list[0] << std::endl;
-        move = players[color]->move(move_list);
+        move = players[BLACK]->move(move_list);
         // std::cout <<  "making move: " << move << std::endl;
         // e->print_move_info(move);
-        e->push_move(move);
+        e->push_black_move(move);
         num_moves[0]++;
         // e->print_char();
         // std::cin.ignore( std::numeric_limits <std::streamsize> ::max(), '\n' );
 
-        moves_made++;
-        color = 1-color;
-        move_list = e->generate_moves(color);
+        move_list = e->generate_white_moves();
+        if(e->is_terminal(move_list, WHITE))
+        {
+            break;
+        }
+        // WHITES MOVE
+
+        // std::cout << color_to_string(WHITE) << " to move." << std::endl;
+        // std::cout <<  "moves avaliable: " << move_list[0] << std::endl;
+        move = players[WHITE]->move(move_list);
+        // std::cout <<  "making move: " << move << std::endl;
+        // e->print_move_info(move);
+        e->push_white_move(move);
+        num_moves[0]++;
+        // e->print_char();
+        // std::cin.ignore( std::numeric_limits <std::streamsize> ::max(), '\n' );
+
+        move_list = e->generate_black_moves();
     }
     int winner = e->get_winner();
     // std::cout << "game over, winner is: " << color_to_string(winner) << " in " << moves_made  << " moves" << std::endl;
@@ -96,9 +110,10 @@ int main()
     t1 = std::chrono::system_clock::now();
 
     int result;
+    int num_games = 100000;
     num_moves[0] = 0;
     
-    for(int i = 0; i < 10000; i++)
+    for(int i = 0; i < num_games; i++)
     {
         result = play_game(e, players, num_moves);
         e->reset_engine();
@@ -107,8 +122,10 @@ int main()
     t2 = std::chrono::system_clock::now();
     time_cast_result = cast_nano(t2 - t1);
     double temp = (double) time_cast_result.count() / num_moves[0];
+    double temp2 = (double) time_cast_result.count() / num_games;
 
     std::cout << "total moves made: " << num_moves[0] << " with " << temp << " nanoseconds per move" << std::endl;
+    std::cout << "total games played: " << num_games << " with " << temp2 << " nanoseconds per game" << std::endl;
     std::cout << "resulting in NPS of: " << 1.0 / (temp * .000000001) << std::endl;
 
     // clean up
