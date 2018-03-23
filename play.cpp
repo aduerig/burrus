@@ -126,7 +126,8 @@ int main()
 
     std::cout << "total moves made: " << num_moves[0] << " with " << temp << " nanoseconds per move" << std::endl;
     std::cout << "total games played: " << num_games << " with " << temp2 << " nanoseconds per game" << std::endl;
-    std::cout << "resulting in NPS of: " << 1.0 / (temp * .000000001) << std::endl;
+    std::cout << "resulting in nodes per second of: " << 1.0 / (temp * .000000001) << std::endl;
+    std::cout << "resulting in games per second of: " << 1.0 / (temp2 * .000000001) << std::endl;
 
     // clean up
     delete(players[1]);
