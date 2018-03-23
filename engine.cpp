@@ -341,30 +341,24 @@ void Engine::pop_move()
 void Engine::flip_stones(U64 stone, U64 own_occ, U64 opp_occ, int color)
 {
     U64 flippers = 0;
-    // U64 init_rook_attacks = one_rook_attacks(stone, own_occ);
-    // U64 init_bishop_attacks = one_bishop_attacks(stone, own_occ);
-    U64 init_rook_attacks = one_rook_attacks(stone, ~opp_occ);
-    U64 init_bishop_attacks = one_bishop_attacks(stone, ~opp_occ);
+
+    U64 inv_opp_occ = ~opp_occ;
+    U64 init_rook_attacks = one_rook_attacks(stone, inv_opp_occ);
+    U64 init_bishop_attacks = one_bishop_attacks(stone, inv_opp_occ);
 
     U64 card_los = init_rook_attacks & own_occ;
     U64 diag_los = init_bishop_attacks & own_occ;
-    
-    U64 other_attacks;
-    U64 popped_board;
-
 
     // other_attacks = all_rook_attacks(card_los, ~own_occ);
-    other_attacks = all_rook_attacks(card_los, opp_occ);
-    flippers = flippers | (other_attacks & init_rook_attacks);
+    flippers |= all_rook_attacks(card_los, opp_occ) & init_rook_attacks;
 
 
     // other_attacks = all_bishop_attacks(diag_los, ~own_occ);
-    other_attacks = all_bishop_attacks(diag_los, opp_occ);
-    flippers = flippers | (other_attacks & init_bishop_attacks);
+    flippers |= all_bishop_attacks(diag_los, opp_occ) & init_bishop_attacks;
 
 
-    pos.board[color] = pos.board[color] | (flippers & opp_occ);
-    pos.board[1-color] = pos.board[1-color] & ~flippers;
+    pos.board[color] |= flippers & opp_occ;
+    pos.board[1-color] &= ~flippers;
 }
 
 void Engine::print_bit_rep(U64 board)
