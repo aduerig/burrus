@@ -51,29 +51,29 @@ int play_game(Engine* e, std::vector<Player*> players, int* num_moves)
     int move;
     int* move_list;
 
-    printf("inital board state\n");
-    e->print_char();
+    // printf("inital board state\n");
+    // e->print_char();
 
     move_list = e->generate_moves(color);
     while(e->is_not_terminal(move_list, color))
     {
-        std::cout << color_to_string(color) << " to move." << std::endl;
-        std::cout <<  "moves avaliable: " << move_list[0] << std::endl;
+        // std::cout << color_to_string(color) << " to move." << std::endl;
+        // std::cout <<  "moves avaliable: " << move_list[0] << std::endl;
         move = players[color]->move(move_list);
-        std::cout <<  "making move: " << move << std::endl;
-        e->print_move_info(move);
+        // std::cout <<  "making move: " << move << std::endl;
+        // e->print_move_info(move);
         e->push_move(move);
         num_moves[0]++;
-        e->print_char();
-        std::cin.ignore( std::numeric_limits <std::streamsize> ::max(), '\n' );
+        // e->print_char();
+        // std::cin.ignore( std::numeric_limits <std::streamsize> ::max(), '\n' );
 
         moves_made++;
         color = 1-color;
         move_list = e->generate_moves(color);
     }
     int winner = e->get_winner();
-    std::cout << "game over, winner is: " << color_to_string(winner) << " in " << moves_made  << " moves" << std::endl;
-    e->print_char();
+    // std::cout << "game over, winner is: " << color_to_string(winner) << " in " << moves_made  << " moves" << std::endl;
+    // e->print_char();
     return winner;
 }
 
@@ -98,10 +98,10 @@ int main()
     int result;
     num_moves[0] = 0;
     
-    for(int i = 0; i < 10; i++)
+    for(int i = 0; i < 10000; i++)
     {
         result = play_game(e, players, num_moves);
-        e->reset_engine();  
+        e->reset_engine();
     }
 
     t2 = std::chrono::system_clock::now();
@@ -111,7 +111,12 @@ int main()
     std::cout << "total moves made: " << num_moves[0] << " with " << temp << " nanoseconds per move" << std::endl;
     std::cout << "resulting in NPS of: " << 1.0 / (temp * .000000001) << std::endl;
 
+    // clean up
+    delete(players[1]);
+    delete(players[0]);
     players.clear();
+    players.shrink_to_fit();
+    e->clean_up();
     delete(e);
     free(num_moves);
     return 0;

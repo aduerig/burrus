@@ -62,6 +62,7 @@ class Engine
 
         void init_engine();
         void reset_engine();
+        void clean_up();
         void init_position();
         void init_position(U64 *board_data);
         void init_lsb_lookup();
@@ -111,17 +112,6 @@ class Engine
         int is_not_terminal(int* moves, int color);
 
         //move_gen
-        U64 cardinal_moves(int color);
-        U64 north_moves(U64 mine, U64 prop, U64 empty);        
-        U64 south_moves(U64 mine, U64 prop, U64 empty);
-        U64 east_moves(U64 mine, U64 prop, U64 empty);
-        U64 west_moves(U64 mine, U64 prop, U64 empty);
-
-        U64 diag_moves(int color);
-        U64 north_east_moves(U64 mine, U64 prop, U64 empty);        
-        U64 south_east_moves(U64 mine, U64 prop, U64 empty);
-        U64 south_west_moves(U64 mine, U64 prop, U64 empty);
-        U64 north_west_moves(U64 mine, U64 prop, U64 empty);
         
         U64 one_rook_attacks(U64 rook, U64 occ);
         U64 one_bishop_attacks_ANTI(U64 bishop, int square, U64 occ);
@@ -144,6 +134,41 @@ class Engine
         U64 horizontal_flip(U64 x);
         U64 vertical_flip(U64 x);
 
+        
+        U64 cardinal_moves(int color);
+        U64 north_moves(U64 mine, U64 prop, U64 empty);        
+        U64 south_moves(U64 mine, U64 prop, U64 empty);
+        U64 east_moves(U64 mine, U64 prop, U64 empty);
+        U64 west_moves(U64 mine, U64 prop, U64 empty);
+
+        U64 diag_moves(int color);
+        U64 north_east_moves(U64 mine, U64 prop, U64 empty);        
+        U64 south_east_moves(U64 mine, U64 prop, U64 empty);
+        U64 south_west_moves(U64 mine, U64 prop, U64 empty);
+        U64 north_west_moves(U64 mine, U64 prop, U64 empty);
+
+
+        //floods
+        
+        U64 all_rook_attacks(U64 rook, U64 occ);
+        U64 all_bishop_attacks(U64 rook, U64 occ);
+
+        U64 vert_flood(U64 rooks, U64 prop);
+        U64 hori_flood(U64 rooks, U64 prop);
+
+        U64 north_flood(U64 rooks, U64 prop);
+        U64 south_flood(U64 rooks, U64 prop);
+        U64 east_flood(U64 rooks, U64 prop);
+        U64 west_flood(U64 rooks, U64 prop);
+
+        U64 left_diag_flood(U64 bishops, U64 prop);
+        U64 right_diag_flood(U64 bishops, U64 prop);
+
+        U64 north_east_flood(U64 bishops, U64 prop);
+        U64 south_east_flood(U64 bishops, U64 prop);
+        U64 south_west_flood(U64 bishops, U64 prop);
+        U64 north_west_flood(U64 bishops, U64 prop);
+
     private:
         int max_move_length;
         int move_arr_size;
@@ -151,6 +176,8 @@ class Engine
         int board_stack_index;
         U64* board_stack;
         int pass_counter = 0;
+
+        int* move_list;
 
         precomputed_masks square_masks[64];
 

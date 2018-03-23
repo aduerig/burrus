@@ -26,6 +26,8 @@ void Engine::init_engine()
     board_stack = (U64*) malloc(2*(max_move_length + 1) * sizeof(U64));
     board_stack_index = -2;
 
+    move_list = (int*) malloc(move_arr_size * sizeof(int));
+
     init_masks();
     init_lsb_lookup();
     fill_square_masks();
@@ -35,6 +37,16 @@ void Engine::reset_engine()
 {
     board_stack_index = -2;
     init_position();
+}
+
+void Engine::clean_up()
+{
+    free(move_list);
+    free(board_stack);
+    free(row_mask);
+    free(col_mask);
+    free(diag_left_mask);
+    free(diag_right_mask);
 }
 
 void Engine::init_position()
@@ -60,18 +72,6 @@ void Engine::init_lsb_lookup()
 void Engine::fill_square_masks()
 {
     U64 temp;
-    // for(int i = 0; i < 64; i++)
-    // {
-    //     temp = 1ULL << i;
-
-    //     int diag = get_diag(get_rank(temp), get_file(temp));
-    //     int left_diag = diag >> 5;
-    //     int right_diag = diag & 0x000000000000000F;
-
-    //     square_masks[i].left_diag_mask_excluded = ~temp & diag_left_mask[left_diag];
-    //     square_masks[i].right_diag_mask_excluded = ~temp & diag_right_mask[right_diag];
-    //     square_masks[i].file_mask_excluded = ~temp & col_mask[get_file(temp)];
-    // }
 
     for(int i = 0; i < 64; i++)
     {
@@ -81,15 +81,12 @@ void Engine::fill_square_masks()
         int left_diag = diag >> 5;
         int right_diag = diag & 0x000000000000000F;
 
-        // printf("filemask\n");
-
         square_masks[i].left_diag_mask_excluded = ~temp & diag_left_mask[left_diag];
         square_masks[i].right_diag_mask_excluded = ~temp & diag_right_mask[right_diag];
         square_masks[i].file_mask_excluded = ~temp & col_mask[get_file(temp)];
         // printf("\n");
         // print_bit_rep(square_masks[i].left_diag_mask_excluded);
     }
-    // exit(0);
 }
 
 void Engine::init_masks()
@@ -100,23 +97,23 @@ void Engine::init_masks()
     col_mask = (U64*) malloc(8 * sizeof(U64));
     fill_col_mask_arr();
 
-    diag_left_mask = (U64*) malloc(15 * sizeof(U64));
-    fill_diag_left_mask_arr();
     // Diag left masks start on left side and moves from left to right, top to bottom
     // [0] corresponds to bottom left corner
     // [0]-[7] moves up y axis along x=0
     // [7] is top left corner
     // [7]-[14] moves across x-axis along y=7
     // [14] is top right corner
+    diag_left_mask = (U64*) malloc(15 * sizeof(U64));
+    fill_diag_left_mask_arr();
 
-    diag_right_mask = (U64*) malloc(15 * sizeof(U64));
-    fill_diag_right_mask_arr();
     // Diag right masks start on bottom side and moves from left to right, bottom to top
     // [0] corresponds to bottom right corner
     // [0]-[7] moves down the x axis along y=0
     // [7] is bottom left corner
     // [7]-[14] moves up the y-axis along x=0
     // [14] is top left corner
+    diag_right_mask = (U64*) malloc(15 * sizeof(U64));
+    fill_diag_right_mask_arr();
 }
 
 U64 Engine::make_col_mask(U64 mask)
@@ -301,41 +298,70 @@ void Engine::pop_move()
     stack_pop();
 }
 
+// void Engine::flip_stones(U64 stone, U64 own_occ, U64 opp_occ, int color)
+// {
+//     U64 flippers = 0;
+//     U64 init_rook_attacks = one_rook_attacks(stone, own_occ);
+//     U64 init_bishop_attacks = one_bishop_attacks(stone, own_occ);
+
+//     // printf("init attacks\n");
+//     // print_bit_rep(init_attacks);
+    
+//     U64 card_los = init_rook_attacks & own_occ;
+//     U64 diag_los = init_bishop_attacks & own_occ;
+    
+//     U64 other_attacks;
+//     U64 popped_board;
+
+//     while(card_los)
+//     {
+//         popped_board = lsb_board(card_los);
+//         other_attacks = one_rook_attacks(popped_board, own_occ);
+//         card_los = card_los - popped_board;
+
+//         flippers = flippers | (other_attacks & init_rook_attacks);
+//     }
+
+//     while(diag_los)
+//     {
+//         popped_board = lsb_board(diag_los);
+//         other_attacks = one_bishop_attacks(popped_board, own_occ);
+//         diag_los = diag_los - popped_board;
+
+//         flippers = flippers | (other_attacks & init_bishop_attacks);
+//     }
+
+//     // printf("\nflippers\n");
+//     // print_bit_rep(flippers);
+
+//     pos.board[color] = pos.board[color] | (flippers & opp_occ);
+//     pos.board[1-color] = pos.board[1-color] & ~flippers;
+// }
+
 void Engine::flip_stones(U64 stone, U64 own_occ, U64 opp_occ, int color)
 {
     U64 flippers = 0;
-    U64 init_rook_attacks = one_rook_attacks(stone, own_occ);
-    U64 init_bishop_attacks = one_bishop_attacks(stone, own_occ);
+    // U64 init_rook_attacks = one_rook_attacks(stone, own_occ);
+    // U64 init_bishop_attacks = one_bishop_attacks(stone, own_occ);
+    U64 init_rook_attacks = one_rook_attacks(stone, ~opp_occ);
+    U64 init_bishop_attacks = one_bishop_attacks(stone, ~opp_occ);
 
-    // printf("init attacks\n");
-    // print_bit_rep(init_attacks);
-    
     U64 card_los = init_rook_attacks & own_occ;
     U64 diag_los = init_bishop_attacks & own_occ;
     
     U64 other_attacks;
     U64 popped_board;
 
-    while(card_los)
-    {
-        popped_board = lsb_board(card_los);
-        other_attacks = one_rook_attacks(popped_board, own_occ);
-        card_los = card_los - popped_board;
 
-        flippers = flippers | (other_attacks & init_rook_attacks);
-    }
+    // other_attacks = all_rook_attacks(card_los, ~own_occ);
+    other_attacks = all_rook_attacks(card_los, opp_occ);
+    flippers = flippers | (other_attacks & init_rook_attacks);
 
-    while(diag_los)
-    {
-        popped_board = lsb_board(diag_los);
-        other_attacks = one_bishop_attacks(popped_board, own_occ);
-        diag_los = diag_los - popped_board;
 
-        flippers = flippers | (other_attacks & init_bishop_attacks);
-    }
+    // other_attacks = all_bishop_attacks(diag_los, ~own_occ);
+    other_attacks = all_bishop_attacks(diag_los, opp_occ);
+    flippers = flippers | (other_attacks & init_bishop_attacks);
 
-    // printf("\nflippers\n");
-    // print_bit_rep(flippers);
 
     pos.board[color] = pos.board[color] | (flippers & opp_occ);
     pos.board[1-color] = pos.board[1-color] & ~flippers;
@@ -417,7 +443,6 @@ U64 Engine::square_to_bitboard(int square)
 // Generates and returns a list of legal moves for a color
 int* Engine::generate_moves(int color)
 {
-    int *move_list = (int*) malloc(move_arr_size * sizeof(int)); 
     move_list[0] = 0; // encode index in array
 
     U64 possible_moves = cardinal_moves(color) | diag_moves(color);
@@ -474,7 +499,6 @@ int Engine::get_winner()
     }
 }
 
-
 //alternative method to scoring (probably faster)
 // http://chessprogramming.wikispaces.com/Population+Count#SWAR-Popcount-The%20PopCount%20routine
 // int popCount (U64 x) {
@@ -491,14 +515,6 @@ int Engine::is_not_terminal(int* move_list, int color)
 {
     if(move_list[0] == 0)
     {
-        // int* other_moves = generate_moves(1-color);
-        // int num_moves = other_moves[0];
-        // free(other_moves);
-        // if(num_moves == 0)
-        // {
-            // return score_board();
-            // return 1;
-        // }
         if(pass_counter == 2)
         {
             return 0;
@@ -507,113 +523,6 @@ int Engine::is_not_terminal(int* move_list, int color)
     return 1;
 }
 
-
-//move gen
-U64 Engine::cardinal_moves(int color)
-{
-    return north_moves(get_color(color), get_color(1-color), ~get_all()) | south_moves(get_color(color), get_color(1-color), ~get_all()) |
-           east_moves(get_color(color), get_color(1-color), ~get_all()) | west_moves(get_color(color), get_color(1-color), ~get_all());
-}
-
-U64 Engine::north_moves(U64 mine, U64 prop, U64 empty)
-{
-    U64 moves = prop & (mine << 8);
-    moves |= prop & (moves << 8);
-    moves |= prop & (moves << 8);
-    moves |= prop & (moves << 8);
-    moves |= prop & (moves << 8);
-    moves |= prop & (moves << 8);
-    return empty & (moves << 8);
-}
-
-U64 Engine::south_moves(U64 mine, U64 prop, U64 empty)
-{
-    U64 moves = prop & (mine >> 8);
-    moves |= prop & (moves >> 8);
-    moves |= prop & (moves >> 8);
-    moves |= prop & (moves >> 8);
-    moves |= prop & (moves >> 8);
-    moves |= prop & (moves >> 8);
-    return empty & (moves >> 8);
-}
-
-U64 Engine::east_moves(U64 mine, U64 prop, U64 empty)
-{
-    prop = prop & ~col_mask[7];
-    U64 moves = prop & (mine << 1);
-    moves |= prop & (moves << 1);
-    moves |= prop & (moves << 1);
-    moves |= prop & (moves << 1);
-    moves |= prop & (moves << 1);
-    moves |= prop & (moves << 1);
-    return empty & (moves << 1);
-}
-
-U64 Engine::west_moves(U64 mine, U64 prop, U64 empty)
-{
-    prop = prop & ~col_mask[0];
-    U64 moves = prop & (mine >> 1);
-    moves |= prop & (moves >> 1);
-    moves |= prop & (moves >> 1);
-    moves |= prop & (moves >> 1);
-    moves |= prop & (moves >> 1);
-    moves |= prop & (moves >> 1);
-    return empty & (moves >> 1);
-}
-
-U64 Engine::diag_moves(int color)
-{
-    return north_east_moves(get_color(color), get_color(1-color), ~get_all()) | south_east_moves(get_color(color), get_color(1-color), ~get_all()) |
-           south_west_moves(get_color(color), get_color(1-color), ~get_all()) | north_west_moves(get_color(color), get_color(1-color), ~get_all());
-}
-
-U64 Engine::north_east_moves(U64 mine, U64 prop, U64 empty)
-{
-    prop = prop & ~col_mask[7];
-    U64 moves = prop & (mine << 9);
-    moves |= prop & (moves << 9);
-    moves |= prop & (moves << 9);
-    moves |= prop & (moves << 9);
-    moves |= prop & (moves << 9);
-    moves |= prop & (moves << 9);
-    return empty & (moves << 9);
-}
-
-U64 Engine::south_east_moves(U64 mine, U64 prop, U64 empty)
-{
-    prop = prop & ~col_mask[7];
-    U64 moves = prop & (mine >> 7);
-    moves |= prop & (moves >> 7);
-    moves |= prop & (moves >> 7);
-    moves |= prop & (moves >> 7);
-    moves |= prop & (moves >> 7);
-    moves |= prop & (moves >> 7);
-    return empty & (moves >> 7);
-}
-
-U64 Engine::south_west_moves(U64 mine, U64 prop, U64 empty)
-{
-    prop = prop & ~col_mask[0];
-    U64 moves = prop & (mine >> 9);
-    moves |= prop & (moves >> 9);
-    moves |= prop & (moves >> 9);
-    moves |= prop & (moves >> 9);
-    moves |= prop & (moves >> 9);
-    moves |= prop & (moves >> 9);
-    return empty & (moves >> 9);
-}
-
-U64 Engine::north_west_moves(U64 mine, U64 prop, U64 empty)
-{
-    prop = prop & ~col_mask[0];
-    U64 moves = prop & (mine << 7);
-    moves |= prop & (moves << 7);
-    moves |= prop & (moves << 7);
-    moves |= prop & (moves << 7);
-    moves |= prop & (moves << 7);
-    moves |= prop & (moves << 7);
-    return empty & (moves << 7);
-}
 
 U64 Engine::one_rook_attacks(U64 rook, U64 o)
 {
@@ -653,6 +562,8 @@ U64 Engine::one_bishop_attacks(U64 bishop, U64 occ)
 {
     int square = bitboard_to_square(bishop);
 
+    // printf("you are being called\n");
+
     U64 line_mask = square_masks[square].left_diag_mask_excluded; // excludes square of slider
 
     U64 forward = occ & line_mask; // also performs the first subtraction by clearing the s in o
@@ -663,9 +574,6 @@ U64 Engine::one_bishop_attacks(U64 bishop, U64 occ)
     forward = forward ^ vertical_flip(reverse);
 
     U64 attks = one_bishop_attacks_ANTI(bishop, square, occ) | (forward & line_mask);
-
-    // printf("\nbishop attks\n");
-    // print_bit_rep(attks);
 
     return attks;      // mask the line again
 }
@@ -857,7 +765,6 @@ int Engine::get_diag(int rank, int file)
     int right;
 
     //Total val also equals left diag index
-
     if(rank > file) //Above the middle diagonal line r = 7
     {
         right = 7+(total_val-2*file);
@@ -866,12 +773,6 @@ int Engine::get_diag(int rank, int file)
     {
         right = 7-(total_val-2*rank);
     }
-
-    // int* diag = (int*) malloc(2 * sizeof(int));
-    // diag[0] = total_val;
-    // diag[1] = right;
-    // int ret_val = (total_val << 5) | (total_val << 5);
-
     return (total_val << 5) | right;
 }
 
@@ -941,8 +842,257 @@ U64 Engine::horizontal_flip(U64 x)
     return x;
 }
 
-
 U64 Engine::vertical_flip(U64 x)
 {
     return __builtin_bswap64(x);
+}
+
+
+// move gen
+U64 Engine::cardinal_moves(int color)
+{
+    return north_moves(get_color(color), get_color(1-color), ~get_all()) | south_moves(get_color(color), get_color(1-color), ~get_all()) |
+           east_moves(get_color(color), get_color(1-color), ~get_all()) | west_moves(get_color(color), get_color(1-color), ~get_all());
+}
+
+U64 Engine::north_moves(U64 mine, U64 prop, U64 empty)
+{
+    U64 moves = prop & (mine << 8);
+    moves |= prop & (moves << 8);
+    moves |= prop & (moves << 8);
+    moves |= prop & (moves << 8);
+    moves |= prop & (moves << 8);
+    moves |= prop & (moves << 8);
+    return empty & (moves << 8);
+}
+
+U64 Engine::south_moves(U64 mine, U64 prop, U64 empty)
+{
+    U64 moves = prop & (mine >> 8);
+    moves |= prop & (moves >> 8);
+    moves |= prop & (moves >> 8);
+    moves |= prop & (moves >> 8);
+    moves |= prop & (moves >> 8);
+    moves |= prop & (moves >> 8);
+    return empty & (moves >> 8);
+}
+
+U64 Engine::east_moves(U64 mine, U64 prop, U64 empty)
+{
+    prop = prop & ~col_mask[7];
+    U64 moves = prop & (mine << 1);
+    moves |= prop & (moves << 1);
+    moves |= prop & (moves << 1);
+    moves |= prop & (moves << 1);
+    moves |= prop & (moves << 1);
+    moves |= prop & (moves << 1);
+    return empty & (moves << 1);
+}
+
+U64 Engine::west_moves(U64 mine, U64 prop, U64 empty)
+{
+    prop = prop & ~col_mask[0];
+    U64 moves = prop & (mine >> 1);
+    moves |= prop & (moves >> 1);
+    moves |= prop & (moves >> 1);
+    moves |= prop & (moves >> 1);
+    moves |= prop & (moves >> 1);
+    moves |= prop & (moves >> 1);
+    return empty & (moves >> 1);
+}
+
+U64 Engine::diag_moves(int color)
+{
+    return north_east_moves(get_color(color), get_color(1-color), ~get_all()) | south_east_moves(get_color(color), get_color(1-color), ~get_all()) |
+           south_west_moves(get_color(color), get_color(1-color), ~get_all()) | north_west_moves(get_color(color), get_color(1-color), ~get_all());
+}
+
+U64 Engine::north_east_moves(U64 mine, U64 prop, U64 empty)
+{
+    prop = prop & ~col_mask[7];
+    U64 moves = prop & (mine << 9);
+    moves |= prop & (moves << 9);
+    moves |= prop & (moves << 9);
+    moves |= prop & (moves << 9);
+    moves |= prop & (moves << 9);
+    moves |= prop & (moves << 9);
+    return empty & (moves << 9);
+}
+
+U64 Engine::south_east_moves(U64 mine, U64 prop, U64 empty)
+{
+    prop = prop & ~col_mask[7];
+    U64 moves = prop & (mine >> 7);
+    moves |= prop & (moves >> 7);
+    moves |= prop & (moves >> 7);
+    moves |= prop & (moves >> 7);
+    moves |= prop & (moves >> 7);
+    moves |= prop & (moves >> 7);
+    return empty & (moves >> 7);
+}
+
+U64 Engine::south_west_moves(U64 mine, U64 prop, U64 empty)
+{
+    prop = prop & ~col_mask[0];
+    U64 moves = prop & (mine >> 9);
+    moves |= prop & (moves >> 9);
+    moves |= prop & (moves >> 9);
+    moves |= prop & (moves >> 9);
+    moves |= prop & (moves >> 9);
+    moves |= prop & (moves >> 9);
+    return empty & (moves >> 9);
+}
+
+U64 Engine::north_west_moves(U64 mine, U64 prop, U64 empty)
+{
+    prop = prop & ~col_mask[0];
+    U64 moves = prop & (mine << 7);
+    moves |= prop & (moves << 7);
+    moves |= prop & (moves << 7);
+    moves |= prop & (moves << 7);
+    moves |= prop & (moves << 7);
+    moves |= prop & (moves << 7);
+    return empty & (moves << 7);
+}
+
+
+//
+// FLOODS
+//
+
+U64 Engine::all_rook_attacks(U64 rooks, U64 prop)
+{
+    return vert_flood(rooks, prop) | hori_flood(rooks, prop);
+}
+
+U64 Engine::all_bishop_attacks(U64 bishops, U64 prop)
+{
+    return left_diag_flood(bishops, prop) | right_diag_flood(bishops, prop);
+}
+
+
+U64 Engine::vert_flood(U64 rooks, U64 prop)
+{
+    return(north_flood(rooks, prop) | south_flood(rooks, prop));
+}
+
+U64 Engine::hori_flood(U64 rooks, U64 prop)
+{
+    return(east_flood(rooks, prop & ~col_mask[7]) | west_flood(rooks, prop & ~col_mask[0]));
+}
+
+
+U64 Engine::north_flood(U64 rooks, U64 prop)
+{
+    U64 north_flood = 0;
+
+    while(rooks) 
+    {
+        north_flood = north_flood | rooks;
+        rooks = (rooks << 8) & prop;
+    }
+    return(north_flood << 8);
+}
+
+U64 Engine::south_flood(U64 rooks, U64 prop)
+{
+    U64 south_flood = 0;
+
+    while(rooks) 
+    {
+        south_flood = south_flood | rooks;
+        rooks = (rooks >> 8) & prop;
+    }
+    return(south_flood >> 8);
+}
+
+
+U64 Engine::east_flood(U64 rooks, U64 prop)
+{
+    U64 east_flood = 0;
+    rooks = rooks & ~col_mask[7];
+
+    while(rooks) 
+    {
+        east_flood = east_flood | rooks;
+        rooks = (rooks << 1) & prop;
+    }
+    return((east_flood & ~col_mask[7]) << 1);
+}
+
+U64 Engine::west_flood(U64 rooks, U64 prop)
+{
+    U64 west_flood = 0;
+    rooks = rooks & ~col_mask[0];
+
+    while(rooks) 
+    {
+        west_flood = west_flood | rooks;
+        rooks = (rooks >> 1) & prop;
+    }
+    return((west_flood & ~col_mask[0]) >> 1);
+}
+
+
+U64 Engine::left_diag_flood(U64 bishops, U64 prop)
+{
+    return(north_west_flood(bishops, prop & ~col_mask[0]) | south_east_flood(bishops, prop & ~col_mask[7]));
+}
+
+U64 Engine::right_diag_flood(U64 bishops, U64 prop)
+{
+    return(north_east_flood(bishops, prop & ~col_mask[7]) | south_west_flood(bishops, prop & ~col_mask[0]));
+}
+
+
+U64 Engine::north_east_flood(U64 bishops, U64 prop)
+{
+    U64 east_flood = 0;
+    bishops = bishops & ~col_mask[7];
+
+    while(bishops) 
+    {
+        east_flood = east_flood | bishops;
+        bishops = (bishops << 9) & prop;
+    }
+    return((east_flood & ~col_mask[7]) << 9);
+}
+
+U64 Engine::south_east_flood(U64 bishops, U64 prop)
+{
+    U64 east_flood = 0;
+    bishops = bishops & ~col_mask[7];
+
+    while(bishops) 
+    {
+        east_flood = east_flood | bishops;
+        bishops = (bishops >> 7) & prop;
+    }
+    return((east_flood & ~col_mask[7]) >> 7);
+}
+
+U64 Engine::south_west_flood(U64 bishops, U64 prop)
+{
+    U64 west_flood = 0;
+    bishops = bishops & ~col_mask[0];
+
+    while(bishops) 
+    {
+        west_flood = west_flood | bishops;
+        bishops = (bishops >> 9) & prop;
+    }
+    return((west_flood & ~col_mask[0]) >> 9);
+}
+
+U64 Engine::north_west_flood(U64 bishops, U64 prop)
+{
+    U64 west_flood = 0;
+    bishops = bishops & ~col_mask[0];
+
+    while(bishops) 
+    {
+        west_flood = west_flood | bishops;
+        bishops = (bishops << 7) & prop;
+    }
+    return((west_flood & ~col_mask[0]) << 7);
 }
