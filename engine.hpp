@@ -94,6 +94,7 @@ class Engine
         // maximum number of moves allowed in the game
         int get_max_move_length();
         U64 get_color(int color);
+        std::string color_to_string(int color);
         U64 get_all();
 
         // move encoding and decoding

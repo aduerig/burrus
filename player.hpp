@@ -19,8 +19,6 @@ class Player
         int get_color();
         virtual int move(int* move_list)=0;
 
-    private:
-
 };
 
 class Rand: public Player
@@ -28,14 +26,20 @@ class Rand: public Player
     public:
         Rand(int col, Engine* engine);
         int move(int* move_list);
+};
 
-    private:
+class Human: public Player
+{
+    public:
+        Human(int col, Engine* engine);
+        int move(int* move_list);
+        int parse_coords(std::string seq);
 };
 
 class Minimax: public Player
 {
     public:
-        Minimax(int col, Engine* engine);
+        Minimax(int col, Engine* engine, int search_limit);
         // int minimax_white(int depth);
         // int minimax_black(int depth);
         // int minimax(int depth, int color);

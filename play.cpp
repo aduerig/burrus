@@ -22,22 +22,6 @@
 // cachegrind read: cg_annotate cachegrind.out.601
 
 
-std::string color_to_string(int color)
-{
-    if(color == 1)
-    {
-        return "White";
-    }
-    else if(color == 0)
-    {
-        return "Black";
-    }
-    else
-    {
-        return "Draw";
-    }
-}
-
 std::chrono::duration<double, std::nano> cast_nano(std::chrono::duration<double> x)
 {
     return std::chrono::duration_cast<std::chrono::nanoseconds>(x);
@@ -48,22 +32,21 @@ int play_game(Engine* e, std::vector<Player*> players, int* num_moves)
     int move;
     int* move_list;
 
-    // printf("inital board state\n");
-    // e->print_char();
+    printf("inital board state\n");
+    e->print_char();
 
     move_list = e->generate_black_moves();
     while(e->is_not_terminal(move_list, BLACK))
     {
         // BLACKS MOVE
 
-        // std::cout << color_to_string(BLACK) << " to move." << std::endl;
-        // std::cout <<  "moves avaliable: " << move_list[0] << std::endl;
+        std::cout << e->color_to_string(BLACK) << " to move." << std::endl;
+        std::cout <<  "moves avaliable: " << move_list[0] << std::endl;
         move = players[BLACK]->move(move_list);
-        // std::cout <<  "making move: " << move << std::endl;
-        // e->print_move_info(move);
+        std::cout <<  "making move: " << move << std::endl;
         e->push_black_move(move);
         num_moves[0]++;
-        // e->print_char();
+        e->print_char();
         // std::cin.ignore( std::numeric_limits <std::streamsize> ::max(), '\n' );
 
         move_list = e->generate_white_moves();
@@ -73,21 +56,20 @@ int play_game(Engine* e, std::vector<Player*> players, int* num_moves)
         }
         // WHITES MOVE
 
-        // std::cout << color_to_string(WHITE) << " to move." << std::endl;
-        // std::cout <<  "moves avaliable: " << move_list[0] << std::endl;
+        std::cout << e->color_to_string(WHITE) << " to move." << std::endl;
+        std::cout <<  "moves avaliable: " << move_list[0] << std::endl;
         move = players[WHITE]->move(move_list);
-        // std::cout <<  "making move: " << move << std::endl;
-        // e->print_move_info(move);
+        std::cout <<  "making move: " << move << std::endl;
         e->push_white_move(move);
         num_moves[0]++;
-        // e->print_char();
+        e->print_char();
         // std::cin.ignore( std::numeric_limits <std::streamsize> ::max(), '\n' );
 
         move_list = e->generate_black_moves();
     }
     int winner = e->get_winner();
-    // std::cout << "game over, winner is: " << color_to_string(winner) << " in " << moves_made  << " moves" << std::endl;
-    // e->print_char();
+    std::cout << "game over, winner is: " << e->color_to_string(winner) << " in " << num_moves[0]  << " moves" << std::endl;
+    e->print_char();
     return winner;
 }
 
@@ -99,7 +81,7 @@ int main()
     
     std::vector<Player*> players;
     players.push_back(new Rand(0, e)); // black
-    players.push_back(new Rand(1, e)); // white
+    players.push_back(new Human(1, e)); // white
 
     std::chrono::time_point<std::chrono::system_clock> t1, t2;
     std::chrono::duration<double, std::nano> time_cast_result;

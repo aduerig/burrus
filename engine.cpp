@@ -6,6 +6,7 @@
 
 
 
+
 Engine::Engine()
 {
     init_position();
@@ -237,10 +238,21 @@ int Engine::get_max_move_length()
     return max_move_length;
 }
 
-// U64 Engine::get_color(int color)
-// {
-//     return *(pos.board + color);
-// }
+std::string Engine::color_to_string(int color)
+{
+    if(color == 1)
+    {
+        return "White";
+    }
+    else if(color == 0)
+    {
+        return "Black";
+    }
+    else
+    {
+        return "Draw";
+    }
+}
 
 U64 Engine::get_all()
 {
@@ -443,7 +455,7 @@ void Engine::print_bit_rep(U64 board)
 void Engine::print_char()
 {
     char* b = (char*) malloc(8*8*sizeof(char));
-    for(int i = 0; i<8; i++)
+    for(int i = 0; i < 8; i++)
     {
         for(int j = 0; j < 8; j++)
         {
@@ -472,12 +484,18 @@ void Engine::print_char()
 
     for(int i = 0; i < 8; i++)
     {
+        char* tmp = (char *) calloc(30, sizeof(char));
+        sprintf(tmp, "%d", 7-i);
+        std::cout << tmp;
+        free(tmp);
+
         for(int j = 0; j < 8; j++)
         {
             std::cout << b[j+i*8];
         }
         std::cout << std::endl;
     }
+    std::cout << " ABCDEFGH" << std::endl;
 }
 
 // East << 1
