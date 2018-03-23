@@ -978,6 +978,7 @@ U64 Engine::south_moves(U64 mine, U64 prop, U64 empty)
 U64 Engine::east_moves(U64 mine, U64 prop, U64 empty)
 {
     prop = prop & inv_col_mask[7];
+    mine = mine & inv_col_mask[7];
     U64 moves = prop & (mine << 1);
     moves |= prop & (moves << 1);
     moves |= prop & (moves << 1);
@@ -990,6 +991,7 @@ U64 Engine::east_moves(U64 mine, U64 prop, U64 empty)
 U64 Engine::west_moves(U64 mine, U64 prop, U64 empty)
 {
     prop = prop & inv_col_mask[0];
+    mine = mine & inv_col_mask[0];
     U64 moves = prop & (mine >> 1);
     moves |= prop & (moves >> 1);
     moves |= prop & (moves >> 1);
@@ -1023,6 +1025,7 @@ U64 Engine::diag_black_moves()
 U64 Engine::north_east_moves(U64 mine, U64 prop, U64 empty)
 {
     prop = prop & inv_col_mask[7];
+    mine = mine & inv_col_mask[7];
     U64 moves = prop & (mine << 9);
     moves |= prop & (moves << 9);
     moves |= prop & (moves << 9);
@@ -1035,6 +1038,7 @@ U64 Engine::north_east_moves(U64 mine, U64 prop, U64 empty)
 U64 Engine::south_east_moves(U64 mine, U64 prop, U64 empty)
 {
     prop = prop & inv_col_mask[7];
+    mine = mine & inv_col_mask[7];
     U64 moves = prop & (mine >> 7);
     moves |= prop & (moves >> 7);
     moves |= prop & (moves >> 7);
@@ -1047,6 +1051,7 @@ U64 Engine::south_east_moves(U64 mine, U64 prop, U64 empty)
 U64 Engine::south_west_moves(U64 mine, U64 prop, U64 empty)
 {
     prop = prop & inv_col_mask[0];
+    mine = mine & inv_col_mask[0];
     U64 moves = prop & (mine >> 9);
     moves |= prop & (moves >> 9);
     moves |= prop & (moves >> 9);
@@ -1059,6 +1064,7 @@ U64 Engine::south_west_moves(U64 mine, U64 prop, U64 empty)
 U64 Engine::north_west_moves(U64 mine, U64 prop, U64 empty)
 {
     prop = prop & inv_col_mask[0];
+    mine = mine & inv_col_mask[0];
     U64 moves = prop & (mine << 7);
     moves |= prop & (moves << 7);
     moves |= prop & (moves << 7);

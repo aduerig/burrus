@@ -47,7 +47,7 @@ vector<int> read_moves(ifstream &fpi)
 {
   vector<int> moves;
   string line;
-  getline(fpi,line);
+  getline(fpi, line);
   string color;
   int n_moves;
   stringstream(line) >> color >> n_moves;
@@ -55,7 +55,7 @@ vector<int> read_moves(ifstream &fpi)
   char *p;
   p = &(line[0]);
   int n = 0;
-  for (int i = 0; i < line.length(); ++i)
+  for (int i = 0; i < (int) line.length(); ++i)
   {
     if (n < 2)
     {
@@ -117,16 +117,16 @@ int main(int argc, char * argv[])
     for (int idx = 1; idx <= eng_moves[0]; ++idx) { eng_white_moves[idx] = eng_moves[idx]; }
 
 
-    cout << " my black moves: " << black_moves.size();
-    for (int i = 0; i < black_moves.size(); ++i) { cout << " " << black_moves[i]; }
+    cout << " my black moves: " << (int) black_moves.size();
+    for (int i = 0; i < (int) black_moves.size(); ++i) { cout << " " << black_moves[i]; }
     cout << endl;
     
     cout << "eng black moves: " << eng_black_moves[0];
     for (int i = 1; i <= eng_black_moves[0]; ++i) { cout << " " << eng_black_moves[i]; }
     cout << endl;
 
-    cout << " my white moves: " << white_moves.size();
-    for (int i = 0; i < white_moves.size(); ++i) { cout << " " << white_moves[i]; }
+    cout << " my white moves: " << (int) white_moves.size();
+    for (int i = 0; i < (int) white_moves.size(); ++i) { cout << " " << white_moves[i]; }
     cout << endl;
 
     cout << "eng white moves: " << eng_white_moves[0];
@@ -134,15 +134,15 @@ int main(int argc, char * argv[])
     cout << endl; 
 
     // check move counts
-    if (black_moves.size() == eng_black_moves[0]) { cout << "We agree on black move count!" << endl; }
-    else { cout << "Test file says there are " << black_moves.size() << " black moves, but the engine found " << eng_black_moves[0] << " black moves" << endl; }
-    if (white_moves.size() == eng_white_moves[0]) { cout << "We agree on white move count!" << endl; }
-    else { cout << "Test file says there are " << white_moves.size() << " white moves, but the engine found " << eng_white_moves[0] << " white moves" << endl; }
+    if ((int) black_moves.size() == eng_black_moves[0]) { cout << "We agree on black move count!" << endl; }
+    else { cout << "Test file says there are " << (int) black_moves.size() << " black moves, but the engine found " << eng_black_moves[0] << " black moves" << endl; }
+    if ((int) white_moves.size() == eng_white_moves[0]) { cout << "We agree on white move count!" << endl; }
+    else { cout << "Test file says there are " << (int) white_moves.size() << " white moves, but the engine found " << eng_white_moves[0] << " white moves" << endl; }
 
     // check move numbers
     int *eng_black_moves_used = (int *) calloc(eng_black_moves[0] + 1, sizeof(int));
     int *eng_white_moves_used = (int *) calloc(eng_white_moves[0] + 1, sizeof(int));
-    for (int my_idx = 0; my_idx < black_moves.size(); ++my_idx)
+    for (int my_idx = 0; my_idx < (int) black_moves.size(); ++my_idx)
     {
       int flag = 0;
       for (int eng_idx = 1; eng_idx <= eng_black_moves[0]; ++eng_idx)
@@ -157,7 +157,7 @@ int main(int argc, char * argv[])
       if (eng_black_moves_used[eng_idx] != 1) { cout << "Engine found black move: " << eng_black_moves[eng_idx] << " that was not listed in test file" << endl; }
     }
 
-    for (int my_idx = 0; my_idx < white_moves.size(); ++my_idx)
+    for (int my_idx = 0; my_idx < (int) white_moves.size(); ++my_idx)
     {
       int flag = 0;
       for (int eng_idx = 1; eng_idx <= eng_white_moves[0]; ++eng_idx)
@@ -180,14 +180,14 @@ Keeping this incase something breaks and they dont.
 
 cout << "Checking black moves:" << endl;
     U64 bm = e->cardinal_black_moves() | e->diag_black_moves();
-    for (int j = 0; j < black_moves.size(); ++j)
+    for (int j = 0; j < (int) black_moves.size(); ++j)
     {
       if ((bm & (1ULL << black_moves[j])) != 0) { cout << "found move " << black_moves[j] << endl; }
       else { cout << "didn't find move " << black_moves[j] << endl; }
     }
 cout << "Checking white moves:" << endl;
     U64 wm = e->cardinal_white_moves() | e->diag_white_moves();
-    for (int j = 0; j < white_moves.size(); ++j)
+    for (int j = 0; j < (int) white_moves.size(); ++j)
     {
       if ((wm & (1ULL << white_moves[j])) != 0) { cout << "found move " << white_moves[j] << endl; }
       else { cout << "didn't find move " << white_moves[j] << endl; }
@@ -215,7 +215,7 @@ cout << "Checking white moves:" << endl;
 // Make each black move and check that the resulting board is correct
 // Note, it only makes the black moves that are given in the test file
 // because there's nothing to test against for moves that aren't
-    for (int j = 0; j < black_moves.size(); ++j)
+    for (int j = 0; j < (int) black_moves.size(); ++j)
     {
       Engine* me = new Engine();
       me->pos.black_board = 0;
@@ -248,7 +248,7 @@ cout << "Checking white moves:" << endl;
     }
 
 // Make each white move and check that the resulting board is correct
-    for (int j = 0; j < white_moves.size(); ++j)
+    for (int j = 0; j < (int) white_moves.size(); ++j)
     {
       Engine* me = new Engine();
       me->pos.black_board = 0;
