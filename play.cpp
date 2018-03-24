@@ -69,7 +69,7 @@ int play_game(Engine* e, std::vector<Player*> players, int* num_moves)
     }
     int winner = e->get_winner();
     std::cout << "game over, winner is: " << e->color_to_string(winner) << " in " << num_moves[0]  << " moves" << std::endl;
-    e->print_char();
+    // e->print_char();
     return winner;
 }
 
@@ -83,7 +83,7 @@ int main()
     // warinign players must be instaniated in the right order, 0 then 1
     players.push_back(new Rand(0, e)); // black
     // players.push_back(new Human(1, e)); // white
-    players.push_back(new Minimax(1, e, 3)); // white
+    players.push_back(new Minimax(1, e, 5)); // white
 
     std::chrono::time_point<std::chrono::system_clock> t1, t2;
     std::chrono::duration<double, std::nano> time_cast_result;
@@ -91,30 +91,33 @@ int main()
     int* num_moves = (int*) malloc(sizeof(int));
 
     num_moves[0] = 0;
-    // t1 = std::chrono::system_clock::now();
+    t1 = std::chrono::system_clock::now();
 
-    int result;
-    int num_games = 5;
+    int num_games = 100;
     num_moves[0] = 0;
+    int result_store[3] = {0, 0, 0};
     
     for(int i = 0; i < num_games; i++)
     {
-        result = play_game(e, players, num_moves);
+        result_store[play_game(e, players, num_moves)]++;
         e->reset_engine();
         num_moves[0] = 0;
     }
 
-    // t2 = std::chrono::system_clock::now();
-    // time_cast_result = cast_nano(t2 - t1);
+    // timing fun
+
+    t2 = std::chrono::system_clock::now();
+    time_cast_result = cast_nano(t2 - t1);
     // double temp = (double) time_cast_result.count() / num_moves[0];
-    // double temp2 = (double) time_cast_result.count() / num_games;
+    double temp2 = (double) time_cast_result.count() / num_games;
 
     // std::cout << "total moves made: " << num_moves[0] << " with " << temp << " nanoseconds per move" << std::endl;
-    // std::cout << "total games played: " << num_games << " with " << temp2 << " nanoseconds per game" << std::endl;
+    std::cout << "total games played: " << num_games << " with " << temp2 << " nanoseconds per game" << std::endl;
     // std::cout << "resulting in nodes per second of: " << 1.0 / (temp * .000000001) << std::endl;
     // std::cout << "resulting in games per second of: " << 1.0 / (temp2 * .000000001) << std::endl;
 
-    printf("x lives at %p.\n", (void*) e->move_list);
+    printf("out of %i games\nwhite won: %i\nblack won %i\ndraws %i\nwhite win percentage: %f\n", 
+                    num_games, result_store[1], result_store[0], result_store[2], (float)result_store[1] / num_games);
 
     // clean up
     delete(players[0]);
@@ -122,7 +125,7 @@ int main()
     players.clear();
     players.shrink_to_fit();
     e->clean_up();
-    // delete(e);
-    // free(num_moves);
+    delete(e);
+    free(num_moves);
     return 0;
 }

@@ -187,6 +187,7 @@ int Minimax::minimax_white(int depth, double alpha, double beta)
     {
         e->push_white_move(-1);
         bestVal = minimax_black(depth-1, alpha, beta);
+        e->pop_move();
     }
 
     return bestVal;
@@ -228,6 +229,7 @@ int Minimax::minimax_black(int depth, double alpha, double beta)
     {
         e->push_black_move(-1);
         bestVal = minimax_white(depth-1, alpha, beta);
+        e->pop_move();
     }
 
     return bestVal;
@@ -238,7 +240,7 @@ int Minimax::move(int* move_list)
 {
     if(move_list[0] == 0)
     {
-        std::cout << e->color_to_string(get_color()) << " passed because they have no moves (minimax)" << std::endl;
+        // std::cout << e->color_to_string(get_color()) << " passed because they have no moves (minimax)" << std::endl;
         return -1;
     }
 
