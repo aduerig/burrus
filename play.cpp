@@ -85,7 +85,7 @@ int main()
     // warinign players must be instaniated in the right order, 0 then 1
     players.push_back(new Rand(0, e)); // black
     // players.push_back(new Human(1, e)); // white
-    players.push_back(new Minimax(1, e, 3)); // white
+    players.push_back(new Minimax(1, e, 5)); // white
     // players.push_back(new Rand(1, e)); // black
 
     std::chrono::time_point<std::chrono::system_clock> t1, t2;
@@ -96,7 +96,7 @@ int main()
     num_moves[0] = 0;
     t1 = std::chrono::system_clock::now();
 
-    int num_games = 10;
+    int num_games = 100;
     num_moves[0] = 0;
     int result_store[3] = {0, 0, 0};
     

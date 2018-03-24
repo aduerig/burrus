@@ -191,6 +191,12 @@ class Engine
         precomputed_masks square_masks[64];
 
         std::unordered_map<U64, int> lsb_lookup;
+
+        // constants to help iwht score_board
+        const U64 k1 = 0x5555555555555555; /*  -1/3   */
+        const U64 k2 = 0x3333333333333333; /*  -1/5   */
+        const U64 k4 = 0x0f0f0f0f0f0f0f0f; /*  -1/17  */
+        const U64 kf = 0x0101010101010101; /*  -1/255 */
 };
 
 #endif

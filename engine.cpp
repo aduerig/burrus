@@ -553,28 +553,47 @@ int* Engine::generate_black_moves()
     return move_list;
 }
 
-int Engine::score_board()
+// int Engine::score_board()
+// {
+//     int total = 0;
+//     U64 temp;
+//     U64 white = pos.white_board;
+//     U64 black = pos.black_board;
+
+//     while(white)
+//     {
+//         temp = lsb_board(white);
+//         total++;
+//         white = white - temp;
+//     }
+
+//     while(black)
+//     {
+//         temp = lsb_board(black);
+//         total--;
+//         black = black - temp;
+//     }
+//     return total;
+// }
+
+//alternative method to scoring (probably faster)
+// http://chessprogramming.wikispaces.com/Population+Count#SWAR-Popcount-The%20PopCount%20routine
+int Engine::score_board () 
 {
-    int total = 0;
-    U64 temp;
-    U64 white = pos.white_board;
-    U64 black = pos.black_board;
+    U64 x = pos.white_board;
+    x =  x       - ((x >> 1)  & k1); /* put count of each 2 bits into those 2 bits */
+    x = (x & k2) + ((x >> 2)  & k2); /* put count of each 4 bits into those 4 bits */
+    x = (x       +  (x >> 4)) & k4 ; /* put count of each 8 bits into those 8 bits */
+    x = (x * kf) >> 56; /* returns 8 most significant bits of x + (x<<8) + (x<<16) + (x<<24) + ...  */
 
-    while(white)
-    {
-        temp = lsb_board(white);
-        total++;
-        white = white - temp;
-    }
-
-    while(black)
-    {
-        temp = lsb_board(black);
-        total--;
-        black = black - temp;
-    }
-    return total;
+    U64 y = pos.black_board;
+    y =  y       - ((y >> 1)  & k1); /* put count of each 2 bits into those 2 bits */
+    y = (y & k2) + ((y >> 2)  & k2); /* put count of each 4 bits into those 4 bits */
+    y = (y       +  (y >> 4)) & k4 ; /* put count of each 8 bits into those 8 bits */
+    y = (y * kf) >> 56; /* returns 8 most significant bits of x + (x<<8) + (x<<16) + (x<<24) + ...  */
+    return (int) x - (int) y;
 }
+
 
 int Engine::get_winner()
 {
@@ -583,25 +602,16 @@ int Engine::get_winner()
     {
         return 2;
     }
-    else if(score > 0)
-    {
-        return 1;
-    }
-    else
-    {
-        return 0;
-    }
+    return score > 0;
+    // if(score > 0)
+    // {
+    //     return 1;
+    // }
+    // else
+    // {
+    //     return 0;
+    // }
 }
-
-//alternative method to scoring (probably faster)
-// http://chessprogramming.wikispaces.com/Population+Count#SWAR-Popcount-The%20PopCount%20routine
-// int popCount (U64 x) {
-//     x =  x       - ((x >> 1)  & k1); /* put count of each 2 bits into those 2 bits */
-//     x = (x & k2) + ((x >> 2)  & k2); /* put count of each 4 bits into those 4 bits */
-//     x = (x       +  (x >> 4)) & k4 ; /* put count of each 8 bits into those 8 bits */
-//     x = (x * kf) >> 56; /* returns 8 most significant bits of x + (x<<8) + (x<<16) + (x<<24) + ...  */
-//     return (int) x;
-// }
 
 // 0 for not over
 // other numerals centered around 100
