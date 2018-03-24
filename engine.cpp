@@ -67,7 +67,7 @@ void Engine::init_position(U64 *board_data)
 
 void Engine::init_lsb_lookup()
 {
-    for(int i=0; i<64; i++)
+    for(int i=0; i < 64; i++)
     {
         lsb_lookup.insert({(U64) std::pow(2,i),i});
     }
@@ -570,7 +570,7 @@ int Engine::score_board()
     while(black)
     {
         temp = lsb_board(black);
-        total++;
+        total--;
         black = black - temp;
     }
     return total;

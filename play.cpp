@@ -47,6 +47,7 @@ int play_game(Engine* e, std::vector<Player*> players, int* num_moves)
         e->push_black_move(move);
         num_moves[0]++;
         // e->print_char();
+        // printf("score of board above %i\n", e->score_board());
         // std::cin.ignore( std::numeric_limits <std::streamsize> ::max(), '\n' );
 
         move_list = e->generate_white_moves();
@@ -63,12 +64,13 @@ int play_game(Engine* e, std::vector<Player*> players, int* num_moves)
         e->push_white_move(move);
         num_moves[0]++;
         // e->print_char();
+        // printf("score of board above %i\n", e->score_board());
         // std::cin.ignore( std::numeric_limits <std::streamsize> ::max(), '\n' );
 
         move_list = e->generate_black_moves();
     }
     int winner = e->get_winner();
-    std::cout << "game over, winner is: " << e->color_to_string(winner) << " in " << num_moves[0]  << " moves" << std::endl;
+    // std::cout << "game over, winner is: " << e->color_to_string(winner) << " in " << num_moves[0]  << " moves" << std::endl;
     // e->print_char();
     return winner;
 }
@@ -83,7 +85,8 @@ int main()
     // warinign players must be instaniated in the right order, 0 then 1
     players.push_back(new Rand(0, e)); // black
     // players.push_back(new Human(1, e)); // white
-    players.push_back(new Minimax(1, e, 5)); // white
+    players.push_back(new Minimax(1, e, 3)); // white
+    // players.push_back(new Rand(1, e)); // black
 
     std::chrono::time_point<std::chrono::system_clock> t1, t2;
     std::chrono::duration<double, std::nano> time_cast_result;
@@ -93,7 +96,7 @@ int main()
     num_moves[0] = 0;
     t1 = std::chrono::system_clock::now();
 
-    int num_games = 100;
+    int num_games = 10;
     num_moves[0] = 0;
     int result_store[3] = {0, 0, 0};
     
