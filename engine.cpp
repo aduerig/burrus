@@ -21,7 +21,7 @@ Engine::Engine(U64* board_data)
 
 void Engine::init_engine()
 {
-    max_move_length = 70; // game depth
+    max_move_length = 200; // game depth
     move_arr_size = 64; // This assumes there are only 64 possible legal moves at any one time (affects move array intilization)
 
     board_stack = (U64*) malloc(3 * (max_move_length + 1) * sizeof(U64));

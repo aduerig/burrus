@@ -181,14 +181,14 @@ int Minimax::minimax_white(int depth, double alpha, double beta)
             return bestVal;
         }
     }
-    
+    free(copied_move_list);
+
     if(num_moves == 0)
     {
         e->push_white_move(-1);
         bestVal = minimax_black(depth-1, alpha, beta);
     }
 
-    free(copied_move_list);
     return bestVal;
 }
 
@@ -222,6 +222,7 @@ int Minimax::minimax_black(int depth, double alpha, double beta)
             return bestVal;
         }
     }
+    free(copied_move_list);
 
     if(num_moves == 0)
     {
@@ -229,7 +230,6 @@ int Minimax::minimax_black(int depth, double alpha, double beta)
         bestVal = minimax_white(depth-1, alpha, beta);
     }
 
-    free(copied_move_list);
     return bestVal;
 }
 

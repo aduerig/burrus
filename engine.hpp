@@ -56,6 +56,8 @@ class Engine
         U64 *diag_left_mask;
         U64 *diag_right_mask;
 
+        int* move_list;
+
         // pushing and popping moves from stack
 
         void push_white_move(int move);
@@ -185,8 +187,6 @@ class Engine
 
         int board_stack_index;
         U64* board_stack;
-
-        int* move_list;
 
         precomputed_masks square_masks[64];
 

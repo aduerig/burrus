@@ -40,14 +40,14 @@ int play_game(Engine* e, std::vector<Player*> players, int* num_moves)
     {
         // BLACKS MOVE
 
-        std::cout << e->color_to_string(BLACK) << " to move." << std::endl;
-        std::cout <<  "moves avaliable: " << move_list[0] << std::endl;
+        // std::cout << e->color_to_string(BLACK) << " to move." << std::endl;
+        // std::cout <<  "moves avaliable: " << move_list[0] << std::endl;
         move = players[BLACK]->move(move_list);
-        std::cout <<  "making move: " << move << std::endl;
+        // std::cout <<  "making move: " << move << std::endl;
         e->push_black_move(move);
         num_moves[0]++;
-        e->print_char();
-        std::cin.ignore( std::numeric_limits <std::streamsize> ::max(), '\n' );
+        // e->print_char();
+        // std::cin.ignore( std::numeric_limits <std::streamsize> ::max(), '\n' );
 
         move_list = e->generate_white_moves();
         if(e->is_terminal(move_list, WHITE))
@@ -56,14 +56,14 @@ int play_game(Engine* e, std::vector<Player*> players, int* num_moves)
         }
         // WHITES MOVE
 
-        std::cout << e->color_to_string(WHITE) << " to move." << std::endl;
-        std::cout <<  "moves avaliable: " << move_list[0] << std::endl;
+        // std::cout << e->color_to_string(WHITE) << " to move." << std::endl;
+        // std::cout <<  "moves avaliable: " << move_list[0] << std::endl;
         move = players[WHITE]->move(move_list);
-        std::cout <<  "making move: " << move << std::endl;
+        // std::cout <<  "making move: " << move << std::endl;
         e->push_white_move(move);
         num_moves[0]++;
-        e->print_char();
-        std::cin.ignore( std::numeric_limits <std::streamsize> ::max(), '\n' );
+        // e->print_char();
+        // std::cin.ignore( std::numeric_limits <std::streamsize> ::max(), '\n' );
 
         move_list = e->generate_black_moves();
     }
@@ -101,6 +101,7 @@ int main()
     {
         result = play_game(e, players, num_moves);
         e->reset_engine();
+        num_moves[0] = 0;
     }
 
     // t2 = std::chrono::system_clock::now();
@@ -113,13 +114,15 @@ int main()
     // std::cout << "resulting in nodes per second of: " << 1.0 / (temp * .000000001) << std::endl;
     // std::cout << "resulting in games per second of: " << 1.0 / (temp2 * .000000001) << std::endl;
 
+    printf("x lives at %p.\n", (void*) e->move_list);
+
     // clean up
-    delete(players[1]);
     delete(players[0]);
+    delete(players[1]);
     players.clear();
     players.shrink_to_fit();
     e->clean_up();
-    delete(e);
-    free(num_moves);
+    // delete(e);
+    // free(num_moves);
     return 0;
 }
