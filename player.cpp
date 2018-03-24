@@ -20,6 +20,11 @@ int my_min(int a, int b)
     return b + (diff & dsgn);
 }
 
+std::chrono::duration<double, std::nano> cast_nano2(std::chrono::duration<double> x)
+{
+    return std::chrono::duration_cast<std::chrono::nanoseconds>(x);
+}
+
 // PLAYER
 
 
@@ -102,7 +107,7 @@ int Human::move(int* move_list)
 {
     if(move_list[0] == 0)
     {
-        std::cout << e->color_to_string(get_color()) << " passed because they have no moves" << std::endl;
+        std::cout << e->color_to_string(get_color()) << " passed because they have no moves (human)" << std::endl;
         return -1;
     }
 
@@ -138,10 +143,174 @@ int Human::move(int* move_list)
     return chosen_move;
 }
 
+//
+// Minimax
+//
+
 Minimax::Minimax(int col, Engine* engine, int search_limit) : Player(col, engine)
 {
     depth_search_limit = search_limit;
 }
+
+int Minimax::minimax_white(int depth, double alpha, double beta)
+{
+    node_count++;
+    int* move_list = e->generate_white_moves();
+
+    if(depth < 1 || e->is_terminal(move_list, color))
+    {
+        return e->score_board();
+    }
+    
+    int num_moves = move_list[0];
+    int* copied_move_list = copy_move_list(move_list);
+
+    int value;
+    int bestVal = -100000;
+    for(int i = 0; i < num_moves; i++)
+    {
+        e->push_white_move(copied_move_list[i]);
+        value = minimax_black(depth-1, alpha, beta);
+        e->pop_move();
+
+        bestVal = my_max(bestVal, value);
+        alpha = my_max(alpha, bestVal);
+        if(beta <= alpha)
+        {
+            free(copied_move_list);
+            return bestVal;
+        }
+    }
+    
+    if(num_moves == 0)
+    {
+        e->push_white_move(-1);
+        bestVal = minimax_black(depth-1, alpha, beta);
+    }
+
+    free(copied_move_list);
+    return bestVal;
+}
+
+int Minimax::minimax_black(int depth, double alpha, double beta)
+{
+    node_count++;
+    int* move_list = e->generate_black_moves();
+    
+    if(depth < 1 || e->is_terminal(move_list, color))
+    {
+        return e->score_board();
+    }
+    
+    int num_moves = move_list[0];
+    int* copied_move_list = copy_move_list(move_list);
+
+    int value;
+    int bestVal = 100000;
+    
+    for(int i = 0; i < num_moves; i++)
+    {
+        e->push_black_move(copied_move_list[i]);
+        value = minimax_white(depth-1, alpha, beta);
+        e->pop_move();
+
+        bestVal = my_min(bestVal, value);
+        beta = my_min(beta, bestVal);
+        if(beta <= alpha)
+        {
+            free(copied_move_list);
+            return bestVal;
+        }
+    }
+
+    if(num_moves == 0)
+    {
+        e->push_black_move(-1);
+        bestVal = minimax_white(depth-1, alpha, beta);
+    }
+
+    free(copied_move_list);
+    return bestVal;
+}
+
+
+int Minimax::move(int* move_list)
+{
+    if(move_list[0] == 0)
+    {
+        std::cout << e->color_to_string(get_color()) << " passed because they have no moves (minimax)" << std::endl;
+        return -1;
+    }
+
+
+    //timing
+    // std::chrono::time_point<std::chrono::system_clock> t1, t2;
+    // std::chrono::duration<double, std::nano> time_cast_result;
+    // t1 = std::chrono::system_clock::now();
+    //end timing
+
+    node_count = 0;
+
+    int num_moves = move_list[0];
+    int* copied_move_list = copy_move_list(move_list);
+
+
+    int best_score;
+    int best_move = copied_move_list[0];
+    int temp;
+
+    if(color)
+    {
+        e->push_white_move(copied_move_list[0]);
+        best_score = minimax_black(depth_search_limit, -100000, 100000);
+        e->pop_move();
+
+        // printf("MINIMAXING FOR WHITE num_moves %i\n", num_moves);
+        for(int i = 1; i < num_moves; i++)
+        {
+            e->push_white_move(copied_move_list[i]);
+            temp = minimax_black(depth_search_limit, -100000, 100000);
+            e->pop_move();
+            if(temp > best_score)
+            {
+                best_score = temp;
+                best_move = copied_move_list[i];
+            }
+        }
+    }
+    else
+    {
+        e->push_black_move(copied_move_list[0]);
+        best_score = minimax_white(depth_search_limit, -100000, 100000);
+        e->pop_move();
+
+        // printf("MINIMAXING FOR BLACK\n");
+        for(int i = 1; i < num_moves; i++)
+        {
+            e->push_black_move(copied_move_list[i]);
+            temp = minimax_white(depth_search_limit, -100000, 100000);
+            e->pop_move();
+            if(temp < best_score)
+            {
+                best_score = temp;
+                best_move = copied_move_list[i];
+            }
+        }
+    }
+    free(copied_move_list);
+
+    //timing
+    // t2 = std::chrono::system_clock::now();
+    // time_cast_result = cast_nano2(t2 - t1);
+    // double timing_temp = (double) time_cast_result.count() / node_count;
+
+    // std::cout << "total nodes examined: " << node_count << " with " << timing_temp << " nanoseconds per move" << std::endl;
+    // std::cout << "resulting in NPS of: " << 1.0 / (timing_temp * .000000001) << std::endl;
+    //end timing
+
+    return(best_move);
+}
+
 
 int* Minimax::copy_move_list(int* move_list)
 {
@@ -158,10 +327,10 @@ int Minimax::decode_terminal_score(int term)
     }
     else if(term == 1)
     {
-        return 999999;
+        return 1000;
     }
     else
     {
-        return -999999;
+        return -1000;
     }
 }

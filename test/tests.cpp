@@ -73,7 +73,7 @@ int main(int argc, char * argv[])
 {
     Engine* e = new Engine();
 
-    int n_tests = 6;
+    int n_tests = 7;
 
     for (int i = 1; i <= n_tests; ++i)
     {

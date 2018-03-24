@@ -32,8 +32,8 @@ int play_game(Engine* e, std::vector<Player*> players, int* num_moves)
     int move;
     int* move_list;
 
-    printf("inital board state\n");
-    e->print_char();
+    // printf("inital board state\n");
+    // e->print_char();
 
     move_list = e->generate_black_moves();
     while(e->is_not_terminal(move_list, BLACK))
@@ -47,7 +47,7 @@ int play_game(Engine* e, std::vector<Player*> players, int* num_moves)
         e->push_black_move(move);
         num_moves[0]++;
         e->print_char();
-        // std::cin.ignore( std::numeric_limits <std::streamsize> ::max(), '\n' );
+        std::cin.ignore( std::numeric_limits <std::streamsize> ::max(), '\n' );
 
         move_list = e->generate_white_moves();
         if(e->is_terminal(move_list, WHITE))
@@ -63,7 +63,7 @@ int play_game(Engine* e, std::vector<Player*> players, int* num_moves)
         e->push_white_move(move);
         num_moves[0]++;
         e->print_char();
-        // std::cin.ignore( std::numeric_limits <std::streamsize> ::max(), '\n' );
+        std::cin.ignore( std::numeric_limits <std::streamsize> ::max(), '\n' );
 
         move_list = e->generate_black_moves();
     }
@@ -80,8 +80,10 @@ int main()
     Engine* e = new Engine();
     
     std::vector<Player*> players;
+    // warinign players must be instaniated in the right order, 0 then 1
     players.push_back(new Rand(0, e)); // black
-    players.push_back(new Human(1, e)); // white
+    // players.push_back(new Human(1, e)); // white
+    players.push_back(new Minimax(1, e, 3)); // white
 
     std::chrono::time_point<std::chrono::system_clock> t1, t2;
     std::chrono::duration<double, std::nano> time_cast_result;
@@ -89,10 +91,10 @@ int main()
     int* num_moves = (int*) malloc(sizeof(int));
 
     num_moves[0] = 0;
-    t1 = std::chrono::system_clock::now();
+    // t1 = std::chrono::system_clock::now();
 
     int result;
-    int num_games = 100000;
+    int num_games = 5;
     num_moves[0] = 0;
     
     for(int i = 0; i < num_games; i++)
@@ -101,15 +103,15 @@ int main()
         e->reset_engine();
     }
 
-    t2 = std::chrono::system_clock::now();
-    time_cast_result = cast_nano(t2 - t1);
-    double temp = (double) time_cast_result.count() / num_moves[0];
-    double temp2 = (double) time_cast_result.count() / num_games;
+    // t2 = std::chrono::system_clock::now();
+    // time_cast_result = cast_nano(t2 - t1);
+    // double temp = (double) time_cast_result.count() / num_moves[0];
+    // double temp2 = (double) time_cast_result.count() / num_games;
 
-    std::cout << "total moves made: " << num_moves[0] << " with " << temp << " nanoseconds per move" << std::endl;
-    std::cout << "total games played: " << num_games << " with " << temp2 << " nanoseconds per game" << std::endl;
-    std::cout << "resulting in nodes per second of: " << 1.0 / (temp * .000000001) << std::endl;
-    std::cout << "resulting in games per second of: " << 1.0 / (temp2 * .000000001) << std::endl;
+    // std::cout << "total moves made: " << num_moves[0] << " with " << temp << " nanoseconds per move" << std::endl;
+    // std::cout << "total games played: " << num_games << " with " << temp2 << " nanoseconds per game" << std::endl;
+    // std::cout << "resulting in nodes per second of: " << 1.0 / (temp * .000000001) << std::endl;
+    // std::cout << "resulting in games per second of: " << 1.0 / (temp2 * .000000001) << std::endl;
 
     // clean up
     delete(players[1]);

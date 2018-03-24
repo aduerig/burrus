@@ -25,7 +25,7 @@ void Engine::init_engine()
     move_arr_size = 64; // This assumes there are only 64 possible legal moves at any one time (affects move array intilization)
 
     board_stack = (U64*) malloc(3 * (max_move_length + 1) * sizeof(U64));
-    board_stack_index = -3;
+    board_stack_index = 0;
 
     move_list = (int*) malloc(move_arr_size * sizeof(int));
 
@@ -36,7 +36,8 @@ void Engine::init_engine()
 
 void Engine::reset_engine()
 {
-    board_stack_index = -3;
+    board_stack_index = 0;
+    pos.pass_counter = 0;
     init_position();
 }
 
@@ -270,10 +271,10 @@ void Engine::print_move_info(int move)
 // Alters the move stack and stack_index value
 void Engine::stack_push()
 {
-    board_stack_index += 3;
     board_stack[board_stack_index] = pos.black_board;
     board_stack[board_stack_index+1] = pos.white_board;
     board_stack[board_stack_index+2] = pos.pass_counter;
+    board_stack_index += 3;
 }
 
 // Takes in nothing
@@ -281,10 +282,10 @@ void Engine::stack_push()
 // Alters the stack_index value
 void Engine::stack_pop()
 {
+    board_stack_index -= 3;
     pos.black_board = board_stack[board_stack_index];
     pos.white_board = board_stack[board_stack_index+1];
     pos.pass_counter = board_stack[board_stack_index+2];
-    board_stack_index -= 3;
 }
 
 // Takes in a move, alters the BitboardEngine's representation to the NEXT state based on the CURRENT move action
