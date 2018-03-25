@@ -46,8 +46,8 @@ int play_game(Engine* e, std::vector<Player*> players, int* num_moves)
         // std::cout <<  "making move: " << move << std::endl;
         e->push_black_move(move);
         num_moves[0]++;
-        // e->print_char();
-        // printf("score of board above %i\n", e->score_board());
+        e->print_char();
+        printf("score of board above %i\n", e->score_board());
         // std::cin.ignore( std::numeric_limits <std::streamsize> ::max(), '\n' );
 
         move_list = e->generate_white_moves();
@@ -63,9 +63,9 @@ int play_game(Engine* e, std::vector<Player*> players, int* num_moves)
         // std::cout <<  "making move: " << move << std::endl;
         e->push_white_move(move);
         num_moves[0]++;
-        // e->print_char();
+        e->print_char();
         // printf("score of board above %i\n", e->score_board());
-        // std::cin.ignore( std::numeric_limits <std::streamsize> ::max(), '\n' );
+        std::cin.ignore( std::numeric_limits <std::streamsize> ::max(), '\n' );
 
         move_list = e->generate_black_moves();
     }

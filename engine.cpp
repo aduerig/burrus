@@ -518,6 +518,12 @@ U64 Engine::square_to_bitboard(int square)
     return(1ULL << square);
 }
 
+// doesnt take into account passing, or whos turn, maybe generate random val for passing and turn?
+U64 Engine::hash_board()
+{
+    return pos.black_board | pos.white_board;
+}
+
 // Generates and returns a list of legal moves for a color
 int* Engine::generate_white_moves()
 {

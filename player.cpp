@@ -246,9 +246,9 @@ int Minimax::move(int* move_list)
 
 
     //timing
-    // std::chrono::time_point<std::chrono::system_clock> t1, t2;
-    // std::chrono::duration<double, std::nano> time_cast_result;
-    // t1 = std::chrono::system_clock::now();
+    std::chrono::time_point<std::chrono::system_clock> t1, t2;
+    std::chrono::duration<double, std::nano> time_cast_result;
+    t1 = std::chrono::system_clock::now();
     //end timing
 
     node_count = 0;
@@ -302,12 +302,12 @@ int Minimax::move(int* move_list)
     free(copied_move_list);
 
     //timing
-    // t2 = std::chrono::system_clock::now();
-    // time_cast_result = cast_nano2(t2 - t1);
-    // double timing_temp = (double) time_cast_result.count() / node_count;
+    t2 = std::chrono::system_clock::now();
+    time_cast_result = cast_nano2(t2 - t1);
+    double timing_temp = (double) time_cast_result.count() / node_count;
 
-    // std::cout << "total nodes examined: " << node_count << " with " << timing_temp << " nanoseconds per move" << std::endl;
-    // std::cout << "resulting in NPS of: " << 1.0 / (timing_temp * .000000001) << std::endl;
+    std::cout << "total nodes examined: " << node_count << " with " << timing_temp << " nanoseconds per move" << std::endl;
+    std::cout << "resulting in NPS of: " << 1.0 / (timing_temp * .000000001) << std::endl;
     //end timing
 
     return(best_move);

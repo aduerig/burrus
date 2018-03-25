@@ -109,6 +109,7 @@ class Engine
         // board helper functions
         int bitboard_to_square(U64 piece);
         U64 square_to_bitboard(int square);
+        U64 hash_board();
 
         //move gen helpers
         bool check_legal(int move, int color);
