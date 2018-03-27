@@ -487,16 +487,16 @@ void Engine::print_char()
     {
         char* tmp = (char *) calloc(30, sizeof(char));
         sprintf(tmp, "%d", 7-i);
-        std::cout << tmp;
+        std::cout << tmp << " ";
         free(tmp);
 
         for(int j = 0; j < 8; j++)
         {
-            std::cout << b[j+i*8];
+            std::cout << b[j+i*8] << " ";
         }
         std::cout << std::endl;
     }
-    std::cout << " ABCDEFGH" << std::endl;
+    std::cout << "  A B C D E F G H" << std::endl;
 }
 
 // East << 1

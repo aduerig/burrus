@@ -130,17 +130,16 @@ def value_head(x, train_bool):
         center=True,
         scale=True,
         training = train_bool,
-        name='value_head_conv_bn_layer'
-    )
+        name='value_head_conv_bn_layer')
 
     # relu
-    first_relu = tf.nn.relu(conv_bn_layer)
+    first_relu = tf.nn.relu(conv_bn_layer, name='value_head_relu1')
 
-    hidden_layer = tf.layers.dense(inputs=first_relu, units = 256) # only 64 possible moves, no activation
+    hidden_layer = tf.layers.dense(inputs=first_relu, units = 256, , name='value_head_dense_to_dense') # only 64 possible moves, no activation
 
-    final_relu = tf.nn.relu(hidden_layer)
+    final_relu = tf.nn.relu(hidden_layer, name='value_head_relu2')
 
-    board_value_not_capped = tf.layers.dense(inputs=final_relu, units = 1) # only 64 possible moves, no activation
+    board_value_not_capped = tf.layers.dense(inputs=final_relu, units = 1, name='value_head_dense_to_scaler') # only 64 possible moves, no activation
 
     board_value = tf.nn.tanh(board_value_not_capped, name='value_head_output')
 
@@ -166,13 +165,12 @@ def policy_head(x, train_bool):
         center=True,
         scale=True,
         training = train_bool,
-        name='policy_head_conv_bn_layer'
-    )
+        name='policy_head_conv_bn_layer')
 
     # relu
-    relu = tf.nn.relu(conv_bn_layer)
+    relu = tf.nn.relu(conv_bn_layer, name='policy_head_relu')
 
-    move_space = tf.layers.dense(inputs=relu, units = 64) # only 64 possible moves, no activation
+    move_space = tf.layers.dense(inputs=relu, units = 64, name='policy_head_output') # only 64 possible moves, no activation
 
     return move_space
 
@@ -198,22 +196,29 @@ def get_inf_batch_gens(data, size):
         yield x, y_real, y_imag
 
 
-def get_data(size):
-    # Import data and goal output data
-    # get newest model
+def get_model_directories():
+    # get newest model directory
     data_dir_name = 'data'
     data_dir = os.path.abspath(os.path.join(os.getcwd(), os.pardir, data_dir_name))
-    newest_model = len(next(os.walk('dir_name'))[1]) - 1
+    
+    # ensure data_dir exists
+    if not os.path.isdir(data_dir):
+        os.mkdir(data_dir)
+
+    newest_model = len(next(os.walk('dir_name'))[1])
+    older_model = newest_model - 1
 
     # if there is no models avaliable we must start from scratch
     if newest_model == -1:
-        # implement later
-        return None
+        return None, os.path.join(data_dir, 'model_' + str(newest_model))
+    return os.path.join(data_dir, 'model_' + str(older_model)), os.path.join(data_dir, 'model_' + str(newest_model))
 
-    newest_model_path = os.path.join(data_dir, str(newest_model))
-    x_path = os.path.join(newest_model_path, 'board_positions')
-    y_policy_labels_path = os.path.join(newest_model_path, 'y_policy_labels')
-    y_true_value_path = os.path.join(newest_model_path, 'y_true_value')
+
+def get_data(size, old_model_dir):
+    # open data
+    x_path = os.path.join(old_model_dir, 'board_positions')
+    y_policy_labels_path = os.path.join(old_model_dir, 'y_policy_labels')
+    y_true_value_path = os.path.join(old_model_dir, 'y_true_value')
 
     x = np.loadtxt(open(x_path, 'r'), delimiter=',')
     y_policy_labels = np.loadtxt(open(y_policy_labels_path, 'r'), delimiter=',')
@@ -254,11 +259,9 @@ def get_data(size):
     return get_inf_batch_gens(all_train, size), get_inf_batch_gens(all_test, size)
 
 
-
+# returns 1 when successful
 def main():
-    optimizer = tf.train.RMSPropOptimizer(0.01).minimize(cost)
-
-    x = tf.placeholder(tf.float32, shape=(None, 128), name='input')
+    x = tf.placeholder(tf.float32, shape=(None, 128), name='x')
     y_policy_labels = tf.placeholder(tf.float32, shape=(None, 64), name='y_policy_labels')
     y_true_value = tf.placeholder(tf.float32, shape=(None, 1), name='y_true_value')
 
@@ -307,8 +310,11 @@ def main():
     accuracy_policy = tf.reduce_mean(tf.cast(correct_policy_prediction, tf.float32))
     accuracy_value = tf.reduce_mean(tf.abs(value_head - y_true_value))
 
-    # create a saver
-    saver = tf.train.Saver()
+    # for training batchnorm features
+    extra_update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+
+    # create a saver (could need different arg passed)
+    saver = tf.train.Saver(tf.trainable_variables())
 
     # initialize the graph
     init = tf.initialize_all_variables()
@@ -318,7 +324,15 @@ def main():
         # sess.run(tf.global_variables_initializer())
         sess.run(init)
 
-        train_batch_gen, test_batch_gen = get_data(GLOBAL_BATCH_SIZE)
+        old_model_dir, new_model_dir = get_model_directory()
+        # No data exists, save random weights to be used in datagen
+        if old_model_dir == None:
+            os.mkdir(new_model_dir)
+            saver.save(sess, new_model_dir)
+            return 1
+
+        train_batch_gen, test_batch_gen = get_data(GLOBAL_BATCH_SIZE, old_model_dir)
+
 
         for i in range(GLOBAL_TRAINING_STEPS):
             curr_batch_holder = next(train_batch_gen)
@@ -332,8 +346,12 @@ def main():
                         x: curr_batch_x, y_true_value: curr_batch_y_true_value})
                 print('step {0}, training accuracy_policy {1}, training accuracy_value {1}'.format(i, 
                             a_p, a_v))
-            train_step.run(feed_dict={x: curr_batch_x, y_policy_labels: curr_batch_y_policy_labels, 
+            sess.run([train_step, extra_update_ops], feed_dict={x: curr_batch_x, 
+                            y_policy_labels: curr_batch_y_policy_labels, 
                             y_true_value: curr_batch_y_true_value})
+
+            if i % 20000:
+                pass
 
         curr_batch_holder = next(test_batch_gen)
         a_p = accuracy_policy.eval(feed_dict={
@@ -342,6 +360,9 @@ def main():
                 x: curr_batch_x, y_true_value: curr_batch_y_true_value})
         print('step {0}, testing accuracy_policy {1}, testing accuracy_value {1}'.format(i, 
                     a_p, a_v))
+    os.mkdir(new_model_dir)
+    saver.save(sess, new_model_dir)
+    return 1
 
 
 if __name__ == "__main__":
