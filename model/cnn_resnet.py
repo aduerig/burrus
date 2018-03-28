@@ -31,6 +31,8 @@ GLOBAL_BATCH_SIZE = 64
 # train_bool is set to True or False depending on if its in infrence or not 
 #       (probably will always not be since infrence will be run in c++, not this model)
 def cnn_block(x, train_bool, block_num):
+    x = tf.reshape(x, [-1, 8, 8, 2])
+
     block_num = str(block_num)
     # conv
     conv_layer = tf.layers.conv2d(
@@ -53,9 +55,9 @@ def cnn_block(x, train_bool, block_num):
         name='cnn_block_' + block_num + '_conv_bn_layer')
 
     # relu
-    conv_bn_layer = tf.nn.relu(conv1_bn)
+    relu = tf.nn.relu(conv_bn_layer, name='cnn_block_' + block_num + '_relu')
 
-    return conv_bn_layer
+    return relu
 
 def resid_block(x, train_bool, block_num):
     block_num = str(block_num)
@@ -93,7 +95,7 @@ def resid_block(x, train_bool, block_num):
 
     # batchnorm2
     conv2_bn_layer = tf.layers.batch_normalization(
-        inputs=conv_layer2,
+        inputs=conv2_layer,
         axis=-1,
         momentum=0.9,
         epsilon=0.001,
@@ -103,15 +105,15 @@ def resid_block(x, train_bool, block_num):
         name='resid_block_' + block_num + '_conv2_bn_layer')
 
     # residual
-    resid_connection = tf.add(conv2_bn_layer, x)
+    resid_connection = tf.add(conv2_bn_layer, x, name='resid_block_resid_connection')
 
     # final relu
-    final_relu = tf.nn.relu(resid_connection, name='policy_head_output')
+    final_relu = tf.nn.relu(resid_connection, name='resid_block_relu')
 
     return final_relu
 
 
-def value_head(x, train_bool):
+def create_value_head(x, train_bool):
     # conv
     conv_layer = tf.layers.conv2d(
             inputs=x,
@@ -135,18 +137,20 @@ def value_head(x, train_bool):
     # relu
     first_relu = tf.nn.relu(conv_bn_layer, name='value_head_relu1')
 
-    hidden_layer = tf.layers.dense(inputs=first_relu, units = 256, , name='value_head_dense_to_dense') # only 64 possible moves, no activation
+    hidden_layer = tf.layers.dense(inputs=first_relu, units = 256, name='value_head_dense_to_dense') # only 64 possible moves, no activation
 
     final_relu = tf.nn.relu(hidden_layer, name='value_head_relu2')
 
-    board_value_not_capped = tf.layers.dense(inputs=final_relu, units = 1, name='value_head_dense_to_scaler') # only 64 possible moves, no activation
+    flattened_value = tf.reshape(final_relu, [-1, 8*8])
+
+    board_value_not_capped = tf.layers.dense(inputs=flattened_value, units = 1, name='value_head_dense_to_scaler') # only 64 possible moves, no activation
 
     board_value = tf.nn.tanh(board_value_not_capped, name='value_head_output')
 
     return board_value
 
 
-def policy_head(x, train_bool):
+def create_policy_head(x, train_bool):
     # conv
     conv_layer = tf.layers.conv2d(
             inputs=x,
@@ -170,7 +174,9 @@ def policy_head(x, train_bool):
     # relu
     relu = tf.nn.relu(conv_bn_layer, name='policy_head_relu')
 
-    move_space = tf.layers.dense(inputs=relu, units = 64, name='policy_head_output') # only 64 possible moves, no activation
+    flattened_policy = tf.reshape(relu, [-1, 2 * 8 * 8])
+
+    move_space = tf.layers.dense(inputs=flattened_policy, units = 64, name='policy_head_output') # only 64 possible moves, no activation
 
     return move_space
 
@@ -203,22 +209,24 @@ def get_model_directories():
     
     # ensure data_dir exists
     if not os.path.isdir(data_dir):
+        print('MODEL: making data directory at {0}', data_dir)
         os.mkdir(data_dir)
 
-    newest_model = len(next(os.walk('dir_name'))[1])
+    newest_model = len(next(os.walk(data_dir))[1])
     older_model = newest_model - 1
 
     # if there is no models avaliable we must start from scratch
-    if newest_model == -1:
+    if older_model == -1:
+        print('MODEL: no data exists, saving network with random weights')
         return None, os.path.join(data_dir, 'model_' + str(newest_model))
     return os.path.join(data_dir, 'model_' + str(older_model)), os.path.join(data_dir, 'model_' + str(newest_model))
 
 
 def get_data(size, old_model_dir):
     # open data
-    x_path = os.path.join(old_model_dir, 'board_positions')
-    y_policy_labels_path = os.path.join(old_model_dir, 'y_policy_labels')
-    y_true_value_path = os.path.join(old_model_dir, 'y_true_value')
+    x_path = os.path.join(old_model_dir, 'board_positions.dat')
+    y_policy_labels_path = os.path.join(old_model_dir, 'y_policy_labels.dat')
+    y_true_value_path = os.path.join(old_model_dir, 'y_true_value.dat')
 
     x = np.loadtxt(open(x_path, 'r'), delimiter=',')
     y_policy_labels = np.loadtxt(open(y_policy_labels_path, 'r'), delimiter=',')
@@ -274,30 +282,28 @@ def main():
     resid_final = resid_input
 
     # get policy and value head
-    value_head = value_head(resid_final, True)
-    policy_head = policy_head(resid_final, True)
+    value_head = create_value_head(resid_final, True)
+    policy_head = create_policy_head(resid_final, True)
 
     # logits and labels must have the same shape, e.g. [batch_size, num_classes] and the same dtype (either float16, float32, or float64).
     # policy head loss
     policy_loss = tf.losses.softmax_cross_entropy(
-            labels=y_policy_labels,
-            logits=policy_head,
+            y_policy_labels, # labels
+            policy_head, # logits
             weights=.5,
             label_smoothing=0,
             loss_collection=tf.GraphKeys.LOSSES,
-            reduction=Reduction.SUM_BY_NONZERO_WEIGHTS,
-            name='loss_softmax_cross_entropy_with_logits')
+            reduction=tf.losses.Reduction.SUM_BY_NONZERO_WEIGHTS)
 
 
     # value head loss
     value_loss = tf.losses.mean_squared_error(
-            labels=y_true_value,
-            logits=value_head,
+            y_true_value, # label
+            value_head, # prediction
             weights=1.0,
             scope=None,
             loss_collection=tf.GraphKeys.LOSSES,
-            reduction=Reduction.SUM_BY_NONZERO_WEIGHTS,
-            name='loss_mean_squared_error')
+            reduction=tf.losses.Reduction.SUM_BY_NONZERO_WEIGHTS)
 
 
     # combine
@@ -317,18 +323,18 @@ def main():
     saver = tf.train.Saver(tf.trainable_variables())
 
     # initialize the graph
-    init = tf.initialize_all_variables()
+    init = tf.global_variables_initializer()
 
     # training
     with tf.Session() as sess:
-        # sess.run(tf.global_variables_initializer())
         sess.run(init)
 
-        old_model_dir, new_model_dir = get_model_directory()
+        old_model_dir, new_model_dir = get_model_directories()
         # No data exists, save random weights to be used in datagen
         if old_model_dir == None:
             os.mkdir(new_model_dir)
-            saver.save(sess, new_model_dir)
+            print(new_model_dir)
+            saver.save(sess, os.path.join(new_model_dir, 'model.ckpt'))
             return 1
 
         train_batch_gen, test_batch_gen = get_data(GLOBAL_BATCH_SIZE, old_model_dir)
@@ -361,7 +367,7 @@ def main():
         print('step {0}, testing accuracy_policy {1}, testing accuracy_value {1}'.format(i, 
                     a_p, a_v))
     os.mkdir(new_model_dir)
-    saver.save(sess, new_model_dir)
+    saver.save(sess, os.path.join(new_model_dir, '/mdel.ckpt'))
     return 1
 
 
