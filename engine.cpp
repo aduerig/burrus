@@ -521,6 +521,7 @@ U64 Engine::square_to_bitboard(int square)
 // doesnt take into account passing, or whos turn, maybe generate random val for passing and turn?
 U64 Engine::hash_board()
 {
+    // maybe just ~ the black board each time?
     return pos.black_board | pos.white_board;
 }
 

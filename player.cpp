@@ -336,3 +336,90 @@ int Minimax::decode_terminal_score(int term)
         return -1000;
     }
 }
+
+
+//
+// MONTE CARLO
+//
+
+
+
+// MonteCarlo::MonteCarlo(int col, Engine* engine, std::string m_path) : Player(col, engine)
+// {
+//     model_path = m_path;
+//     max_sims = 100;
+//     curr_root = NULL;
+// }
+
+// Node* MonteCarlo::init_default_node()
+// {
+//     Node* node_pointer = new Node;
+//     node_pointer->board_hash = e->hash_board();
+//     node_pointer->parent_node = NULL;
+//     node_pointer->visits = 0;    
+//     node_pointer->score = 0;    
+//     node_pointer->policy = 0;
+//     node_pointer->value = 0;
+//     return node_pointer;
+// }
+
+// void MonteCarlo::expand_node(Node* node)
+// {
+//     //
+// }
+
+// int MonteCarlo::move(int* move_list)
+// {
+//     if(move_list[0] == 0) // passing because no moves aval
+//     {
+//         return -1;
+//     }
+
+//     curr_sim = 0;
+//     Node* root = init_default_node();
+//     node_storage.insert({root->board_hash, root});
+//     curr_root = root;
+//     expand_node(root);
+
+//     while(curr_sim < max_sims)
+//     {
+//         // get latest unvisited node based on previous UCT ratings
+//         Node* leaf = traverse_tree(root);
+//         node_storage.insert({leaf->board_hash, leaf});
+
+//         // get value
+
+//         // backpropagate value
+//         backprop(leaf, value);
+//     }
+
+//     return max_child(root); // returns best immediate child node
+// }
+
+// def monte_carlo_tree_search(root):
+//     while resources_left(time, computational power):
+//         leaf = traverse(root) # leaf = unvisited node 
+//         simulation_result = rollout(leaf)
+//         backpropagate(leaf, simulation_result)
+//     return best_child(root)
+
+// def traverse(node):
+//     while fully_expanded(node):
+//         node = best_uct(node)
+//     return pick_univisted(node.children) or node # in case no children are present / node is terminal 
+
+// def rollout(node):
+//     while non_terminal(node):
+//         node = rollout_policy(node)
+//     return result(node) 
+
+// def rollout_policy(node):
+//     return pick_random(node.children)
+
+// def backpropagate(node, result):
+//    if is_root(node) return 
+//    node.stats = update_stats(node, result) 
+//    backpropagate(node.parent)
+
+// def best_child(node):
+//     pick child with highest number of visits

@@ -16,8 +16,12 @@ driver: $(DRIVER_OBJECTS)
 play: $(PLAY_OBJECTS)
 	$(CC) $(CFLAGS) $(PLAY_HEADERS) $(PLAY_OBJECTS) -o play
 
+tensor_driver:
+	$(CC) $(CFLAGS) tensorflow_test.cpp -o tensor_driver
+
 clean:
 	-rm -f driver
 	-rm -f play
 	-rm -f callgrind.out.*
 	-rm -f out.log
+	-rm -f tensor_driver
