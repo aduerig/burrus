@@ -67,6 +67,12 @@ struct Node
 {
     U64 board_hash;
     Node* parent_node;
+    Node* children_nodes;
+    int num_children;
+    bool expanded;
+    bool terminal;
+    int color;
+    int move;
     int visits;
     int score;
     float policy;
@@ -77,14 +83,22 @@ class MonteCarlo: public Player
 {
     public:
         MonteCarlo(int col, Engine* engine, std::string m_path);
-        int move(int* move_list);
         Node* init_default_node();
-        Node* expand_node(Node* node);
+        int* generate_moves_wrapper(int p_color);
+        void push_move_wrapper(int move, int p_color);
+        Node* expand_node(Node* node, int* move_list, int p_color);
+        Node* traverse_tree(Node* node);
+        int move(int* move_list);
+        float compute_uct(Node* node);
+        Node* max_child(Node* node);
 
     private:
         std::string model_path;
         int max_sims;
+
+        // think about collisions, backprop will not go to correct parent
         std::unordered_map<U64, Node*> node_storage;
+        
         Node* curr_root;
 };
 
