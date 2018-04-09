@@ -1,44 +1,73 @@
-// to compile:  g++ engine.hpp engine.cpp driver.cpp -std=c++14 -o run
-
-
 #include "engine.hpp"
 #include <stdio.h>
 #include <stdlib.h>
 #include <iostream>
 #include <fstream>
 
+int play_game(Engine* e, std::vector<Player*> players)
+{
+    int move;
+    int* move_list;
 
+    printf("inital board state\n");
+    e->print_char();
+
+    move_list = e->generate_black_moves();
+    while(e->is_not_terminal(move_list, BLACK))
+    {
+        // BLACKS MOVE
+
+        std::cout << e->color_to_string(BLACK) << " to move." << std::endl;
+        std::cout <<  "moves avaliable: " << move_list[0] << std::endl;
+        move = players[BLACK]->move(move_list);
+        std::cout <<  "making move: " << move << std::endl;
+        e->push_black_move(move);
+        e->print_char();
+        printf("score of board above %i\n", e->score_board());
+        std::cin.ignore( std::numeric_limits <std::streamsize> ::max(), '\n' );
+
+        move_list = e->generate_white_moves();
+        if(e->is_terminal(move_list, WHITE))
+        {
+            break;
+        }
+        // WHITES MOVE
+
+        std::cout << e->color_to_string(WHITE) << " to move." << std::endl;
+        std::cout <<  "moves avaliable: " << move_list[0] << std::endl;
+        move = players[WHITE]->move(move_list);
+        std::cout <<  "making move: " << move << std::endl;
+        e->push_white_move(move);
+        num_moves[0]++;
+        e->print_char();
+        printf("score of board above %i\n", e->score_board());
+        std::cin.ignore( std::numeric_limits <std::streamsize> ::max(), '\n' );
+
+        move_list = e->generate_black_moves();
+    }
+    int winner = e->get_winner();
+    std::cout << "game over, winner is: " << e->color_to_string(winner) << " in " << num_moves[0]  << " moves" << std::endl;
+    e->print_char();
+}
 
 
 int main()
 {
+    srand(time(NULL));
     Engine* e = new Engine();
-    e->reset_engine();
-
-    // e->pos.board[1] = 0b0000000000000000000000000000000000010000000000001110111110000000; // places white pieces
-    // e->print_bit_rep(e->get_color(1)); // print whites pieces
-    printf("the board\n");
-    e->print_char();
-
-    // std::cout << "cardinal_moves for white" << std::endl;
-    // e->print_bit_rep(e->cardinal_moves(1));
-
-    // printf("all possible white move squares\n");
-    // e->print_bit_rep(e->cardinal_moves(1) | e->diag_moves(1));
-
-    // printf("moves for white\n");
-    // int* move_list = e->generate_moves(1);
-    // int num_moves = move_list[0];
-    // move_list++;
-    // for(int i = 0; i < num_moves; i++)
-    // {
-    //     printf("move %i, looks like\n", move_list[i]);
-    //     e->push_move(move_list[i]);
-    //     e->print_char();
-    //     e->pop_move();
-    // }
-
-    printf("finished driver\n");
-
+    
+    std::vector<Player*> players;
+    players.push_back(new Human(0, e)); // white
+    players.push_back(new MonteCarlo(1, e, true)); // white
+    
+    play_game(e, players);
+    
+    // clean up
+    delete(players[0]);
+    delete(players[1]);
+    players.clear();
+    players.shrink_to_fit();
+    e->clean_up();
+    delete(e);
     return 0;
 }

@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <ctype.h>
 #include <map>
+#include <math.h>
 
 int my_max(int a, int b) 
 {
@@ -344,11 +345,12 @@ int Minimax::decode_terminal_score(int term)
 
 
 
-// MonteCarlo::MonteCarlo(int col, Engine* engine, std::string m_path) : Player(col, engine)
+// MonteCarlo::MonteCarlo(int col, Engine* engine, std::string m_path, bool training) : Player(col, engine)
 // {
 //     model_path = m_path;
 //     max_sims = 100;
 //     curr_root = NULL;
+//     is_training = training;
 // }
 
 // Node* MonteCarlo::init_default_node()
@@ -365,7 +367,7 @@ int Minimax::decode_terminal_score(int term)
 //     node_pointer->color = -1;
 //     node_pointer->move = -1;
 //     node_pointer->visits = 0;    
-//     node_pointer->score = 0;    
+//     node_pointer->q_val = 0;    
 //     node_pointer->policy = 0;
 //     node_pointer->value = 0;
 
@@ -476,33 +478,76 @@ int Minimax::decode_terminal_score(int term)
 //         // get value
 
 //         // backpropagate value
-//         backprop(leaf, value);
+//         backup_stats(leaf);
+//     }
+
+//     if (is_training)
+//     {
+//     	// save q_values in saved_q
+//     	// save value in saved_value
 //     }
 
 //     return max_child(root)->move; // returns best immediate child node
 // }
 
-// float MonteCarlo::compute_uct(Node* node)
+// // backs up all statistics and places board state back to root node
+// void MonteCarlo::backup_stats(Node* node)
 // {
+// 	newer_value = node->value;
+// 	while(node != curr_root)
+// 	{
+// 		node->visits++;
+// 		node->tree_value += newer_value;
+// 		node->q_val = node->tree_value / node->visits;
+// 		node = node->parent_node;
+// 		e->pop_move();
+// 	}
 
-// }    
+// 	curr_root->visits++;
+// 	curr_root->tree_value += newer_value;
+// 	curr_root->q_val = curr_root->tree_value / curr_root->visits;
+// }
 
-// // Assumes node->num_chidlren is not null
+// float MonteCarlo::compute_puct(Node* node)
+// {
+// 	float u_val = node->explore_constant * 
+// 			sqrt(node->parent->visits) / (float) (1 + node->visits);
+// 	return node->q_val + u_val;
+// }
+
+// // always will be 64 in length
+// float* MonteCarlo::get_saved_q()
+// {
+// 	return saved_q;
+// }
+
+// // the value return
+// float MonteCarlo::get_saved_value()
+// {
+// 	return saved_value;
+// }
+
+// // Assumes node->num_children is not null
 // // Doesnt take into account shifting color
 // Node* MonteCarlo::max_child(Node* node)
 // {
-//     Node* best_node = node->children_nodes[0];
+//     // Node* best_node = node->children_nodes;
 //     int best_score = compute_uct(best_node);
+//     int best_score = best_node->q_val;
 //     for(int i = 1; i < node->num_children; i++)
 //     {
-//         int temp_uct = compute_uct(node->children_nodes[i]);
+//         int temp_uct = compute_uct(node->children_nodes + i);
+//         // int temp_uct = node->(children_nodes + i)->q_val;
 //         if(temp_uct > best_score)
 //         {
-//             best_node = children_nodes[i];
+//             best_node = node->children_nodes + i;
 //             best_score = temp_uct;
 //         }
 //     }
+//     return best_node;
 // }
+
+
 
 // def monte_carlo_tree_search(root):
 //     while resources_left(time, computational power):

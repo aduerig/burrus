@@ -74,22 +74,24 @@ struct Node
     int color;
     int move;
     int visits;
-    int score;
-    float policy;
-    float value;
+    float policy; // the inital policy value found from the net running on the above node
+    float value; // the inital set of the value net run on this board position
+    float tree_value; // all sub nodes will add their value functions to it
+    float q_val; // updated in the backprop stats
 };
 
 class MonteCarlo: public Player
 {
     public:
-        MonteCarlo(int col, Engine* engine, std::string m_path);
+        MonteCarlo(int col, Engine* engine, std::string m_path, bool training);
         Node* init_default_node();
         int* generate_moves_wrapper(int p_color);
         void push_move_wrapper(int move, int p_color);
         Node* expand_node(Node* node, int* move_list, int p_color);
         Node* traverse_tree(Node* node);
         int move(int* move_list);
-        float compute_uct(Node* node);
+        void backup_stats(Node* node);
+        float compute_puct(Node* node);
         Node* max_child(Node* node);
 
     private:
@@ -100,6 +102,10 @@ class MonteCarlo: public Player
         std::unordered_map<U64, Node*> node_storage;
         
         Node* curr_root;
+        bool is_training;
+        float explore_constant = 1;
+        float saved_value;
+        float* saved_q;
 };
 
 
