@@ -355,27 +355,6 @@ MonteCarlo::MonteCarlo(int col, Engine* engine, std::string m_path, bool trainin
     print_on = true;
 }
 
-Node* MonteCarlo::create_default_node()
-{
-    Node* node_pointer = new Node;
-
-    node_pointer->board_hash = e->hash_board();
-    node_pointer->parent_node = NULL;
-    node_pointer->children_nodes = NULL;
-    node_pointer->num_children = 0;
-
-    node_pointer->expanded = false;
-    node_pointer->is_terminal = false;
-    node_pointer->color = -1;
-    node_pointer->move = -1;
-    node_pointer->visits = 0;    
-    node_pointer->calced_q = 0;    
-    node_pointer->policy = 0;
-    node_pointer->value = 0;
-
-    return node_pointer;
-}
-
 void MonteCarlo::init_default_node(Node* node)
 {
     node->board_hash = e->hash_board();
@@ -392,6 +371,13 @@ void MonteCarlo::init_default_node(Node* node)
     node->calced_q = 0;    
     node->policy = 0;
     node->value = 0;
+}
+
+Node* MonteCarlo::create_default_node()
+{
+    Node* node_pointer = new Node;
+    init_default_node(node_pointer);
+    return node_pointer;
 }
 
 int* MonteCarlo::generate_moves_wrapper(int p_color)
@@ -418,23 +404,6 @@ void MonteCarlo::push_move_wrapper(int move, int p_color)
     }
 }
 
-// struct Node
-// {
-//     U64 board_hash;
-//     Node* parent_node;
-//     Node* children_nodes;
-//     int num_children;
-//     bool expanded;
-//     bool is_terminal;
-//     int color;
-//     int move;
-//     int visits;
-//     float policy; // the inital policy value found from the net running on the above node
-//     float value; // the inital set of the value net run on this board position
-//     float calced_q; // all sub nodes will add their value functions to it
-//     float total_action_value; // updated in the backprop stats
-// };
-
 void MonteCarlo::print_node_info(Node* node)
 {
     // printf("board_hash: %i, parent_node: %p, num_children: %i, expanded: %i\n\n", node->board_hash, (void *) node->parent_node, node->num_children, node->expanded);
@@ -447,7 +416,8 @@ void MonteCarlo::print_node_info(Node* node)
             ", color: " << node->color << 
             ", visits: " << node->visits << 
             ", value: " << node->value <<
-            ", policy: " << node->policy << "\n";
+            ", policy: " << node->policy <<
+            ", calced_q: " << node->calced_q << "\n";
 }
 
 void MonteCarlo::expand_node(Node* node)
@@ -492,7 +462,6 @@ void MonteCarlo::expand_node(Node* node, int* move_list)
     }
 
     // run network here to get policies for children, and value for itself
-
     // node->value = VALUE_FROM_NET; // need network to run before this
 
     node->children_nodes = (Node*) malloc(move_list[0] * sizeof(Node));
@@ -554,38 +523,31 @@ int MonteCarlo::move(int* move_list)
     while(curr_sim < max_sims)
     {
         if(print_on) printf("\n--------- NEW SIMULATION #%i ----------\n\n", curr_sim);
-        // get latest unvisited node based on previous UCT ratings
-        Node* leaf = traverse_tree(root, p_color);
+        Node* leaf = traverse_tree(root, p_color); // get latest unvisited node based on previous PUCT ratings
         expand_node(leaf);
-        node_storage.insert({leaf->board_hash, leaf});
-
-        // get value
-
-        // backpropagate value
-        backup_stats(leaf);
+        backup_stats(leaf); // backpropagate action value of expanded node
         curr_sim++;
     }
 
-    if (is_training)
+    if (is_training) // saving training data
     {
-        if(print_on) printf("SAVING saved_q AND saved_value\n");
-        // save q_values in saved_q
-        // save value in saved_value
-
+        if(print_on) printf("\nSAVING saved_q AND saved_value\n\n");
         for(int i = 0; i < 64; i++)
         {
             saved_q[i] = 0;
         }
-
         for(int i = 0; i < root->num_children; i++)
         {
             saved_q[root->children_nodes->move] = root->children_nodes->calced_q;
         }
-
         saved_value = root->value;
     }
 
-    return max_child(root)->move; // returns best immediate child node
+    Node* best_node = max_child(root);
+    if(print_on) printf("BEST NODE FOUND OFF OF ROOT\n");
+    if(print_on) print_node_info(best_node);
+    if(print_on) printf("\n");
+    return best_node->move; // returns best immediate child node
 }
 
 // backs up all statistics and places board state back to root node
