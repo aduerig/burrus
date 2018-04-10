@@ -8,7 +8,7 @@ DRIVER_OBJECTS = engine.cpp driver.cpp player.cpp
 PLAY_OBJECTS = play.cpp engine.cpp player.cpp
 
 
-all: play
+all: play driver
 
 play: $(PLAY_OBJECTS)
 	$(CC) $(CFLAGS) $(PLAY_HEADERS) $(PLAY_OBJECTS) -o play

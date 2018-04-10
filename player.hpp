@@ -70,14 +70,14 @@ struct Node
     Node* children_nodes;
     int num_children;
     bool expanded;
-    bool terminal;
+    bool is_terminal;
     int color;
     int move;
     int visits;
     float policy; // the inital policy value found from the net running on the above node
     float value; // the inital set of the value net run on this board position
-    float tree_value; // all sub nodes will add their value functions to it
-    float q_val; // updated in the backprop stats
+    float calced_q; // all sub nodes will add their value functions to it
+    float total_action_value; // updated in the backprop stats
 };
 
 class MonteCarlo: public Player
@@ -87,11 +87,14 @@ class MonteCarlo: public Player
         Node* init_default_node();
         int* generate_moves_wrapper(int p_color);
         void push_move_wrapper(int move, int p_color);
-        Node* expand_node(Node* node, int* move_list, int p_color);
-        Node* traverse_tree(Node* node);
+        void expand_node(Node* node);
+        void expand_node(Node* node, int* move_list);
+        Node* traverse_tree(Node* node, int p_color);
         int move(int* move_list);
         void backup_stats(Node* node);
         float compute_puct(Node* node);
+        float* get_saved_q();
+        float get_saved_value();
         Node* max_child(Node* node);
 
     private:

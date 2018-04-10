@@ -345,207 +345,236 @@ int Minimax::decode_terminal_score(int term)
 
 
 
-// MonteCarlo::MonteCarlo(int col, Engine* engine, std::string m_path, bool training) : Player(col, engine)
-// {
-//     model_path = m_path;
-//     max_sims = 100;
-//     curr_root = NULL;
-//     is_training = training;
-// }
+MonteCarlo::MonteCarlo(int col, Engine* engine, std::string m_path, bool training) : Player(col, engine)
+{
+    model_path = m_path;
+    max_sims = 100;
+    curr_root = NULL;
+    is_training = training;
+    saved_q = (float*) malloc(64* sizeof(float));
+}
 
-// Node* MonteCarlo::init_default_node()
-// {
-//     Node* node_pointer = new Node;
+Node* MonteCarlo::init_default_node()
+{
+    Node* node_pointer = new Node;
 
-//     node_pointer->board_hash = e->hash_board();
-//     node_pointer->parent_node = NULL;
-//     node_pointer->children_nodes = NULL;
-//     node_pointer->num_children = 0;
+    node_pointer->board_hash = e->hash_board();
+    node_pointer->parent_node = NULL;
+    node_pointer->children_nodes = NULL;
+    node_pointer->num_children = 0;
 
-//     node_pointer->expanded = false;
-//     node_pointer->is_terminal = false;
-//     node_pointer->color = -1;
-//     node_pointer->move = -1;
-//     node_pointer->visits = 0;    
-//     node_pointer->q_val = 0;    
-//     node_pointer->policy = 0;
-//     node_pointer->value = 0;
+    node_pointer->expanded = false;
+    node_pointer->is_terminal = false;
+    node_pointer->color = -1;
+    node_pointer->move = -1;
+    node_pointer->visits = 0;    
+    node_pointer->calced_q = 0;    
+    node_pointer->policy = 0;
+    node_pointer->value = 0;
 
-//     return node_pointer;
-// }
+    return node_pointer;
+}
 
-// int* MonteCarlo::generate_moves_wrapper(int p_color)
-// {
-//     if(p_color)
-//     {
-//         return e->generate_white_moves();
-//     }
-//     else
-//     {
-//         return e->generate_black_moves();
-//     }
-// }
+int* MonteCarlo::generate_moves_wrapper(int p_color)
+{
+    if(p_color)
+    {
+        return e->generate_white_moves();
+    }
+    else
+    {
+        return e->generate_black_moves();
+    }
+}
 
-// void MonteCarlo::push_move_wrapper(int move, int p_color)
-// {
-//     if(p_color)
-//     {
-//         return e->push_white_move(move);
-//     }
-//     else
-//     {
-//         return e->push_black_move(move);
-//     }
-// }
+void MonteCarlo::push_move_wrapper(int move, int p_color)
+{
+    if(p_color)
+    {
+        return e->push_white_move(move);
+    }
+    else
+    {
+        return e->push_black_move(move);
+    }
+}
 
-// void MonteCarlo::expand_node(Node* node, int* move_list, int p_color)
-// {
-//     if(move_list[0] == 0)
-//     {
-//         int term = e->is_terminal(move_list, p_color);
+void MonteCarlo::expand_node(Node* node)
+{
+    int* move_list = generate_moves_wrapper(node->color);
+    expand_node(node, move_list);
+}
+
+void MonteCarlo::expand_node(Node* node, int* move_list)
+{
+    int p_color = node->color;
+    if(move_list[0] == 0)
+    {
+        int term = e->is_terminal(move_list, p_color);
         
-//         if(term)
-//         {
-//             node->terminal = true;
-//             return;
-//         }
+        if(term)
+        {
+            node->is_terminal = true;
+            return;
+        }
 
 
-//         // initializing a PASS node
-//         // get value from net here
-//         // node->value = VALUE_FROM_NET; // need network to run before this
+        // initializing a PASS node
+        // get value from net here
+        // node->value = VALUE_FROM_NET; // need network to run before this
         
-//         Node* new_node = init_default_node();
-//         new_node->board_hash = e->hash_board();
-//         new_node->color = 1 - p_color;
-//         new_node->parent_node = node;
-//         node_storage.insert({new_node->board_hash, new_node});
-//         return;
-//     }
+        Node* new_node = init_default_node();
+        new_node->board_hash = e->hash_board();
+        new_node->color = 1 - p_color;
+        new_node->parent_node = node;
+        node_storage.insert({new_node->board_hash, new_node});
+        // add pass??
+        return;
+    }
 
-//     // run network here to get policies for children, and value for itself
+    // run network here to get policies for children, and value for itself
 
-//     // node->value = VALUE_FROM_NET; // need network to run before this
+    // node->value = VALUE_FROM_NET; // need network to run before this
 
-//     for(int i = 0; i < move_list[0]; i++)
-//     {
-//         e->push_move_wrapper(move_list[i+1], p_color);
+    for(int i = 0; i < move_list[0]; i++)
+    {
+        push_move_wrapper(move_list[i+1], p_color);
 
-//         // check if node is in node_storage here
+        // check if node is in node_storage here
 
-//         Node* new_node = init_default_node();
-//         new_node->board_hash = e->hash_board();
-//         new_node->color = 1 - p_color;
-//         new_node->parent_node = node;
-//         new_node->move = move_list[i+1];
-//         // new_node->policy = POLICY_ARR_FROM_NET[INDEX]; // need network to run before this
-//         node_storage.insert({new_node->board_hash, new_node});
-//         e->pop_move();
-//     }
-//     node->expanded = true;
-// }
+        Node* new_node = init_default_node();
+        new_node->board_hash = e->hash_board();
+        new_node->color = 1 - p_color;
+        new_node->parent_node = node;
+        new_node->move = move_list[i+1];
+        // new_node->policy = POLICY_ARR_FROM_NET[INDEX]; // need network to run before this
+        node_storage.insert({new_node->board_hash, new_node});
+        e->pop_move();
+    }
+    node->expanded = true;
+}
 
-// Node* MonteCarlo::traverse_tree(Node* node)
-// {
-//     while(!node->expanded)
-//     {
-//         node = max_child(node);
-//     }
-// }
+Node* MonteCarlo::traverse_tree(Node* node, int p_color)
+{
+    while(!node->expanded)
+    {
+        Node* new_node = max_child(node);
+        push_move_wrapper(new_node->move, p_color);
+        node = new_node;
+        p_color = 1 - p_color;
+    }
+    return node;
+}
 
-// int MonteCarlo::move(int* move_list)
-// {
-//     if(move_list[0] == 0) // passing because no moves aval
-//     {
-//         return -1;
-//     }
+int MonteCarlo::move(int* move_list)
+{
+    if(move_list[0] == 0) // passing because no moves aval
+    {
+        return -1;
+    }
 
-//     // setting up root node info
-//     Node* root = init_default_node();
-//     node_storage.insert({root->board_hash, root});
-//     curr_root = root;
-//     root->color = color;
-//     root->board_hash = hash_board();
-//     expand_node(root, move_list, color);
+    // setting up root node info
+    Node* root = init_default_node();
+    node_storage.insert({root->board_hash, root});
+    curr_root = root;
+    root->color = color;
+    root->board_hash = e->hash_board();
+    // expand_node(root, move_list, color); // dont think i need that
 
-//     curr_sim = 0;
-//     while(curr_sim < max_sims)
-//     {
-//         // get latest unvisited node based on previous UCT ratings
-//         Node* leaf = traverse_tree(root);
-//         node_storage.insert({leaf->board_hash, leaf});
+    int curr_sim = 0;
+    int p_color = color;
+    while(curr_sim < max_sims)
+    {
+        // get latest unvisited node based on previous UCT ratings
+        Node* leaf = traverse_tree(root, p_color);
+        expand_node(leaf);
+        node_storage.insert({leaf->board_hash, leaf});
 
-//         // get value
+        // get value
 
-//         // backpropagate value
-//         backup_stats(leaf);
-//     }
+        // backpropagate value
+        backup_stats(leaf);
+        curr_sim++;
+    }
 
-//     if (is_training)
-//     {
-//     	// save q_values in saved_q
-//     	// save value in saved_value
-//     }
+    if (is_training)
+    {
+        // save q_values in saved_q
+        // save value in saved_value
 
-//     return max_child(root)->move; // returns best immediate child node
-// }
+        for(int i = 0; i < 64; i++)
+        {
+            saved_q[i] = 0;
+        }
 
-// // backs up all statistics and places board state back to root node
-// void MonteCarlo::backup_stats(Node* node)
-// {
-// 	newer_value = node->value;
-// 	while(node != curr_root)
-// 	{
-// 		node->visits++;
-// 		node->tree_value += newer_value;
-// 		node->q_val = node->tree_value / node->visits;
-// 		node = node->parent_node;
-// 		e->pop_move();
-// 	}
+        for(int i = 0; i < root->num_children; i++)
+        {
+            saved_q[root->children_nodes->move] = root->children_nodes->calced_q;
+        }
 
-// 	curr_root->visits++;
-// 	curr_root->tree_value += newer_value;
-// 	curr_root->q_val = curr_root->tree_value / curr_root->visits;
-// }
+        saved_value = root->value;
+    }
 
-// float MonteCarlo::compute_puct(Node* node)
-// {
-// 	float u_val = node->explore_constant * 
-// 			sqrt(node->parent->visits) / (float) (1 + node->visits);
-// 	return node->q_val + u_val;
-// }
+    return max_child(root)->move; // returns best immediate child node
+}
 
-// // always will be 64 in length
-// float* MonteCarlo::get_saved_q()
-// {
-// 	return saved_q;
-// }
+// backs up all statistics and places board state back to root node
+void MonteCarlo::backup_stats(Node* node)
+{
+    float newer_value = node->value;
+    while(node != curr_root)
+    {
+        node->visits++;
+        node->total_action_value += newer_value;
+        node->calced_q = node->total_action_value / node->visits;
+        node = node->parent_node;
+        e->pop_move();
+    }
 
-// // the value return
-// float MonteCarlo::get_saved_value()
-// {
-// 	return saved_value;
-// }
+    curr_root->visits++;
+    curr_root->total_action_value += newer_value;
+    curr_root->calced_q = curr_root->total_action_value / curr_root->visits;
+}
 
-// // Assumes node->num_children is not null
-// // Doesnt take into account shifting color
-// Node* MonteCarlo::max_child(Node* node)
-// {
-//     // Node* best_node = node->children_nodes;
-//     int best_score = compute_uct(best_node);
-//     int best_score = best_node->q_val;
-//     for(int i = 1; i < node->num_children; i++)
-//     {
-//         int temp_uct = compute_uct(node->children_nodes + i);
-//         // int temp_uct = node->(children_nodes + i)->q_val;
-//         if(temp_uct > best_score)
-//         {
-//             best_node = node->children_nodes + i;
-//             best_score = temp_uct;
-//         }
-//     }
-//     return best_node;
-// }
+float MonteCarlo::compute_puct(Node* node)
+{
+    float u_val = explore_constant * node->policy * 
+            sqrt(node->parent_node->visits);
+    u_val /= (1 + node->visits);
+    return node->calced_q + u_val;
+}
+
+// always will be 64 in length
+float* MonteCarlo::get_saved_q()
+{
+    return saved_q;
+}
+
+// the value return
+float MonteCarlo::get_saved_value()
+{
+    return saved_value;
+}
+
+// Assumes node->num_children is not null
+// Doesnt take into account shifting color
+Node* MonteCarlo::max_child(Node* node)
+{
+    Node* best_node = node->children_nodes;
+    int best_score = compute_puct(best_node);
+    // int best_score = best_node->calced_q;
+    for(int i = 1; i < node->num_children; i++)
+    {
+        int temp_uct = compute_puct(node->children_nodes + i);
+        // int temp_uct = node->(children_nodes + i)->calced_q;
+        if(temp_uct > best_score)
+        {
+            best_node = node->children_nodes + i;
+            best_score = temp_uct;
+        }
+    }
+    return best_node;
+}
 
 
 

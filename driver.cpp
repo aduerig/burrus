@@ -1,8 +1,11 @@
+#include "player.hpp"
 #include "engine.hpp"
 #include <stdio.h>
 #include <stdlib.h>
 #include <iostream>
 #include <fstream>
+#include <chrono>
+#include <vector>
 
 int play_game(Engine* e, std::vector<Player*> players)
 {
@@ -38,7 +41,6 @@ int play_game(Engine* e, std::vector<Player*> players)
         move = players[WHITE]->move(move_list);
         std::cout <<  "making move: " << move << std::endl;
         e->push_white_move(move);
-        num_moves[0]++;
         e->print_char();
         printf("score of board above %i\n", e->score_board());
         std::cin.ignore( std::numeric_limits <std::streamsize> ::max(), '\n' );
@@ -46,8 +48,9 @@ int play_game(Engine* e, std::vector<Player*> players)
         move_list = e->generate_black_moves();
     }
     int winner = e->get_winner();
-    std::cout << "game over, winner is: " << e->color_to_string(winner) << " in " << num_moves[0]  << " moves" << std::endl;
+    std::cout << "game over, winner is: " << e->color_to_string(winner) << std::endl;
     e->print_char();
+    return winner;
 }
 
 
@@ -58,7 +61,7 @@ int main()
     
     std::vector<Player*> players;
     players.push_back(new Human(0, e)); // white
-    players.push_back(new MonteCarlo(1, e, true)); // white
+    players.push_back(new MonteCarlo(1, e, "bad_path", true)); // white
     
     play_game(e, players);
     
