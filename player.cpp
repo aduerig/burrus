@@ -352,9 +352,10 @@ MonteCarlo::MonteCarlo(int col, Engine* engine, std::string m_path, bool trainin
     curr_root = NULL;
     is_training = training;
     saved_q = (float*) malloc(64* sizeof(float));
+    print_on = true;
 }
 
-Node* MonteCarlo::init_default_node()
+Node* MonteCarlo::create_default_node()
 {
     Node* node_pointer = new Node;
 
@@ -384,6 +385,7 @@ void MonteCarlo::init_default_node(Node* node)
 
     node->expanded = false;
     node->is_terminal = false;
+    node->is_pass = false;
     node->color = -1;
     node->move = -1;
     node->visits = 0;    
@@ -436,7 +438,16 @@ void MonteCarlo::push_move_wrapper(int move, int p_color)
 void MonteCarlo::print_node_info(Node* node)
 {
     // printf("board_hash: %i, parent_node: %p, num_children: %i, expanded: %i\n\n", node->board_hash, (void *) node->parent_node, node->num_children, node->expanded);
-    std::cout << "board_hash: " << node->board_hash << ", parent_node: " << (void*) node->parent_node << ", num_children: " << node->num_children << ", expanded: " << node->expanded << "\n\n";
+    std::cout << "board_hash: " << node->board_hash << 
+            ", parent_node: " << (void*) node->parent_node << 
+            ", num_children: " << node->num_children << 
+            ", expanded: " << node->expanded <<
+            ", is_pass: " << node->is_pass << 
+            ", is_terminal: " << node->is_terminal <<
+            ", color: " << node->color << 
+            ", visits: " << node->visits << 
+            ", value: " << node->value <<
+            ", policy: " << node->policy << "\n";
 }
 
 void MonteCarlo::expand_node(Node* node)
@@ -447,9 +458,9 @@ void MonteCarlo::expand_node(Node* node)
 
 void MonteCarlo::expand_node(Node* node, int* move_list)
 {
-    printf("---EXPANSION---:\n");
-    printf("pre:\n");
-    print_node_info(node);
+    if(print_on) printf("---EXPANSION---:\n");
+    if(print_on) printf("pre:\n");
+    if(print_on) print_node_info(node);
     int p_color = node->color;
     if(move_list[0] == 0)
     {
@@ -458,6 +469,8 @@ void MonteCarlo::expand_node(Node* node, int* move_list)
         if(term)
         {
             node->is_terminal = true;
+            if(print_on) printf("post:\n");
+            if(print_on) print_node_info(node);
             return;
         }
 
@@ -466,12 +479,15 @@ void MonteCarlo::expand_node(Node* node, int* move_list)
         // get value from net here
         // node->value = VALUE_FROM_NET; // need network to run before this
         
-        Node* new_node = init_default_node();
+        Node* new_node = create_default_node();
         new_node->board_hash = e->hash_board();
         new_node->color = 1 - p_color;
         new_node->parent_node = node;
+        new_node->is_pass = true;
         node_storage.insert({new_node->board_hash, new_node});
-        // add pass??
+        
+        if(print_on) printf("post:\n");
+        if(print_on) print_node_info(node);
         return;
     }
 
@@ -498,13 +514,13 @@ void MonteCarlo::expand_node(Node* node, int* move_list)
     }
     node->expanded = true;
 
-    printf("post:\n");
-    print_node_info(node);
+    if(print_on) printf("post:\n");
+    if(print_on) print_node_info(node);
 }
 
 Node* MonteCarlo::traverse_tree(Node* node, int p_color)
 {
-    printf("---TRAVERSAL---:\n");
+    if(print_on) printf("---TRAVERSAL---:\n");
 
     while(node->expanded)
     {
@@ -513,8 +529,8 @@ Node* MonteCarlo::traverse_tree(Node* node, int p_color)
         node = new_node;
         p_color = 1 - p_color;
     }
-    printf("landed on:\n");
-    print_node_info(node);
+    if(print_on) printf("landed on:\n");
+    if(print_on) print_node_info(node);
     return node;
 }
 
@@ -526,7 +542,7 @@ int MonteCarlo::move(int* move_list)
     }
 
     // setting up root node info
-    Node* root = init_default_node();
+    Node* root = create_default_node();
     node_storage.insert({root->board_hash, root});
     curr_root = root;
     root->color = color;
@@ -537,7 +553,7 @@ int MonteCarlo::move(int* move_list)
     int p_color = color;
     while(curr_sim < max_sims)
     {
-        printf("\nmonte-------simulation  %i\n", curr_sim);
+        if(print_on) printf("\n--------- NEW SIMULATION #%i ----------\n\n", curr_sim);
         // get latest unvisited node based on previous UCT ratings
         Node* leaf = traverse_tree(root, p_color);
         expand_node(leaf);
@@ -552,6 +568,7 @@ int MonteCarlo::move(int* move_list)
 
     if (is_training)
     {
+        if(print_on) printf("SAVING saved_q AND saved_value\n");
         // save q_values in saved_q
         // save value in saved_value
 

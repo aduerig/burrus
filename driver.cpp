@@ -60,8 +60,8 @@ int main()
     Engine* e = new Engine();
     
     std::vector<Player*> players;
-    players.push_back(new Human(0, e)); // white
-    players.push_back(new MonteCarlo(1, e, "bad_path", true)); // white
+    players.push_back(new MonteCarlo(0, e, "bad_path", true)); // white
+    players.push_back(new Human(1, e)); // white
     
     play_game(e, players);
     
