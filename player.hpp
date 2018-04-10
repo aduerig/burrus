@@ -85,8 +85,10 @@ class MonteCarlo: public Player
     public:
         MonteCarlo(int col, Engine* engine, std::string m_path, bool training);
         Node* init_default_node();
+        void init_default_node(Node* node);
         int* generate_moves_wrapper(int p_color);
         void push_move_wrapper(int move, int p_color);
+        void print_node_info(Node* node);
         void expand_node(Node* node);
         void expand_node(Node* node, int* move_list);
         Node* traverse_tree(Node* node, int p_color);

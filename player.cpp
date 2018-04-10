@@ -375,6 +375,23 @@ Node* MonteCarlo::init_default_node()
     return node_pointer;
 }
 
+void MonteCarlo::init_default_node(Node* node)
+{
+    node->board_hash = e->hash_board();
+    node->parent_node = NULL;
+    node->children_nodes = NULL;
+    node->num_children = 0;
+
+    node->expanded = false;
+    node->is_terminal = false;
+    node->color = -1;
+    node->move = -1;
+    node->visits = 0;    
+    node->calced_q = 0;    
+    node->policy = 0;
+    node->value = 0;
+}
+
 int* MonteCarlo::generate_moves_wrapper(int p_color)
 {
     if(p_color)
@@ -399,6 +416,29 @@ void MonteCarlo::push_move_wrapper(int move, int p_color)
     }
 }
 
+// struct Node
+// {
+//     U64 board_hash;
+//     Node* parent_node;
+//     Node* children_nodes;
+//     int num_children;
+//     bool expanded;
+//     bool is_terminal;
+//     int color;
+//     int move;
+//     int visits;
+//     float policy; // the inital policy value found from the net running on the above node
+//     float value; // the inital set of the value net run on this board position
+//     float calced_q; // all sub nodes will add their value functions to it
+//     float total_action_value; // updated in the backprop stats
+// };
+
+void MonteCarlo::print_node_info(Node* node)
+{
+    // printf("board_hash: %i, parent_node: %p, num_children: %i, expanded: %i\n\n", node->board_hash, (void *) node->parent_node, node->num_children, node->expanded);
+    std::cout << "board_hash: " << node->board_hash << ", parent_node: " << (void*) node->parent_node << ", num_children: " << node->num_children << ", expanded: " << node->expanded << "\n\n";
+}
+
 void MonteCarlo::expand_node(Node* node)
 {
     int* move_list = generate_moves_wrapper(node->color);
@@ -407,6 +447,9 @@ void MonteCarlo::expand_node(Node* node)
 
 void MonteCarlo::expand_node(Node* node, int* move_list)
 {
+    printf("---EXPANSION---:\n");
+    printf("pre:\n");
+    print_node_info(node);
     int p_color = node->color;
     if(move_list[0] == 0)
     {
@@ -436,13 +479,15 @@ void MonteCarlo::expand_node(Node* node, int* move_list)
 
     // node->value = VALUE_FROM_NET; // need network to run before this
 
+    node->children_nodes = (Node*) malloc(move_list[0] * sizeof(Node));
+    node->num_children = move_list[0];
     for(int i = 0; i < move_list[0]; i++)
     {
         push_move_wrapper(move_list[i+1], p_color);
 
         // check if node is in node_storage here
 
-        Node* new_node = init_default_node();
+        Node* new_node = node->children_nodes + i;
         new_node->board_hash = e->hash_board();
         new_node->color = 1 - p_color;
         new_node->parent_node = node;
@@ -452,17 +497,24 @@ void MonteCarlo::expand_node(Node* node, int* move_list)
         e->pop_move();
     }
     node->expanded = true;
+
+    printf("post:\n");
+    print_node_info(node);
 }
 
 Node* MonteCarlo::traverse_tree(Node* node, int p_color)
 {
-    while(!node->expanded)
+    printf("---TRAVERSAL---:\n");
+
+    while(node->expanded)
     {
         Node* new_node = max_child(node);
         push_move_wrapper(new_node->move, p_color);
         node = new_node;
         p_color = 1 - p_color;
     }
+    printf("landed on:\n");
+    print_node_info(node);
     return node;
 }
 
@@ -479,12 +531,13 @@ int MonteCarlo::move(int* move_list)
     curr_root = root;
     root->color = color;
     root->board_hash = e->hash_board();
-    // expand_node(root, move_list, color); // dont think i need that
+    expand_node(root, move_list);
 
     int curr_sim = 0;
     int p_color = color;
     while(curr_sim < max_sims)
     {
+        printf("\nmonte-------simulation  %i\n", curr_sim);
         // get latest unvisited node based on previous UCT ratings
         Node* leaf = traverse_tree(root, p_color);
         expand_node(leaf);
