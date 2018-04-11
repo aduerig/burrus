@@ -52,16 +52,6 @@ class Minimax: public Player
         int node_count;
 };
 
-//class impl of node
-// class Node
-// {
-//     public:
-//         Node(U64 b_hash);
-
-//     private:
-//         U64 board_hash;
-// }
-
 // struct impl of node
 struct Node
 {
@@ -85,20 +75,34 @@ class MonteCarlo: public Player
 {
     public:
         MonteCarlo(int col, Engine* engine, std::string m_path, bool training);
+        
+        int move(int* move_list);
+        Node* traverse_tree(Node* node, int p_color);
+        void expand_node(Node* node);
+        void expand_node(Node* node, int* move_list);
+        void backup_stats(Node* node);
+        Node* max_child_puct(Node* node);
+        Node* max_child_visits(Node* node);
+        float compute_puct(Node* node);
+
+        // temporary funcs
+        int temp_value_calc();
+
+        // helper funcs
+        int color_multiplier(int color);
+        int get_true_result();
         void init_default_node(Node* node);
         Node* create_default_node();
         int* generate_moves_wrapper(int p_color);
         void push_move_wrapper(int move, int p_color);
         void print_node_info(Node* node);
-        void expand_node(Node* node);
-        void expand_node(Node* node, int* move_list);
-        Node* traverse_tree(Node* node, int p_color);
-        int move(int* move_list);
-        void backup_stats(Node* node);
-        float compute_puct(Node* node);
+        void print_best_graph(Node* node);
+        void print_all_subnodes(Node* node);
+        void print_all_subnodes_helper(Node* node, int depth);
+
+        // saver funcs
         float* get_saved_q();
         float get_saved_value();
-        Node* max_child(Node* node);
 
     private:
         std::string model_path;
