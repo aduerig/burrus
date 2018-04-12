@@ -3,12 +3,16 @@
 
 #include "engine.hpp"
 #include <iostream>
+#include <chrono>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unordered_map>
 
 // typedef int (*foo_ptr_t)( int );
 typedef void (*fp)(int);
+
+/* MRD I put some timers in param.cpp */
+std::chrono::duration<double, std::nano> cast_nano2(std::chrono::duration<double> x);
 
 class Player
 {
