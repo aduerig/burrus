@@ -26,8 +26,8 @@ int play_game(Engine* e, std::vector<Player*> players)
         std::cout <<  "making move: " << move << std::endl;
         e->push_black_move(move);
         e->print_char();
-        printf("score of board above %i\n", e->score_board());
-        std::cin.ignore( std::numeric_limits <std::streamsize> ::max(), '\n' );
+        // printf("score of board above %i\n", e->score_board());
+        // std::cin.ignore( std::numeric_limits <std::streamsize> ::max(), '\n' );
 
         move_list = e->generate_white_moves();
         if(e->is_terminal(move_list, WHITE))
@@ -42,8 +42,8 @@ int play_game(Engine* e, std::vector<Player*> players)
         std::cout <<  "making move: " << move << std::endl;
         e->push_white_move(move);
         e->print_char();
-        printf("score of board above %i\n", e->score_board());
-        std::cin.ignore( std::numeric_limits <std::streamsize> ::max(), '\n' );
+        // printf("score of board above %i\n", e->score_board());
+        // std::cin.ignore( std::numeric_limits <std::streamsize> ::max(), '\n' );
 
         move_list = e->generate_black_moves();
     }
@@ -61,9 +61,13 @@ int main()
     
     std::vector<Player*> players;
     players.push_back(new MonteCarlo(0, e, "bad_path", true)); // white
-    players.push_back(new Human(1, e)); // white
+    players.push_back(new MonteCarlo(1, e, "bad_path", true)); // white
     
-    play_game(e, players);
+    for(int i = 0; i < 10; i++)
+    {
+        play_game(e, players);
+        e->reset_engine();
+    }
     
     // clean up
     delete(players[0]);

@@ -4,6 +4,10 @@
  *
  */
 
+/* to run on bridges
+*  mpirun -n num_proccessors ./param
+*/
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <iostream>
@@ -35,24 +39,49 @@
  *  
  */
 
+// std::string get_newest_model_dir()
+// {
+//     FILE *fp;
+//     char *fnm = (char *) calloc(50,sizeof(char));
+//     int i = 0;
+//     do
+//     {
+//         sprintf(fnm,"../data/model_%d/checkpoint",i);
+//         fp = fopen(fnm,"r");
+//         if (!fp)
+//         {
+//             sprintf(fnm,"../data/model_%d",i-1);
+//             std::string model (fnm); 
+//             return model;
+//         }
+//         fclose(fp);
+//         ++i;
+//     } while (1);
+// }
+
 std::string get_newest_model_dir()
 {
-  FILE *fp;
-  char *fnm = (char *) calloc(50,sizeof(char));
-  int i = 0;
-  do
-  {
-    sprintf(fnm,"../data/model_%d/checkpoint",i);
-    fp = fopen(fnm,"r");
-    if (!fp)
+    FILE *fp;
+    char *fnm = (char *) calloc(50,sizeof(char));
+    int i = 0;
+    do
     {
-      sprintf(fnm,"../data/model_%d",i-1);
-      std::string model (fnm); 
-      return model;
-    }
-    fclose(fp);
-    ++i;
-  } while (1);
+        sprintf(fnm,"data/model_%d/checkpoint",i);
+        fp = fopen(fnm,"r");
+        if (!fp)
+        {
+            if(i-1 < 0)
+            {
+                printf("Exiting with return code 5 because no model folders exists in data/model\n");
+                exit(5);
+            }
+            sprintf(fnm,"data/model_%d",i-1);
+            std::string model (fnm); 
+            return model;
+        }
+        fclose(fp);
+        ++i;
+    } while (1);
 }
 
 /* INPUT:
@@ -76,45 +105,45 @@ std::string get_newest_model_dir()
  */
 
 void save_game_info(std::string model_path, int local_rank, int game_number, Engine* e, 
-                    int num_moves, int result, float **MC_chances)
+                                        int num_moves, int result, float **MC_chances)
 {
-  // Filename: ${model_path}/games/${local_rank}_${game_number}.game
-  FILE *fp;
-  char *fnm = (char *) calloc(50,sizeof(char));
-  sprintf(fnm,"%s/games/%d_%d.game",model_path.c_str(),local_rank,game_number);
-  fp = fopen(fnm,"w");
+    // Filename: ${model_path}/games/${local_rank}_${game_number}.game
+    FILE *fp;
+    char *fnm = (char *) calloc(50,sizeof(char));
+    sprintf(fnm, "%s/games/%d_%d.game", model_path.c_str(), local_rank, game_number);
+    fp = fopen(fnm, "w");
 
-  // save num_moves
-  fprintf(fp,"%d\n",num_moves);  
-  for (int i = num_moves-1; i >= 0; --i)
-  {
-    e->stack_pop();
-    // Save Pieces of player whose turn it is (U64)
-    // Save Pieces of other player (U64)
-    if (i % 2 == 0) // Black plays when num_moves is even. Save black first, then white.
-    { 
-      fprintf(fp,"%llu\n%llu\n",(unsigned long long)e->pos.black_board,(unsigned long long)e->pos.white_board);
-    }
-    else // White plays when num_moves is odd. Save white first, then black.
+    // save num_moves
+    fprintf(fp,"%d\n",num_moves);  
+    for (int i = num_moves-1; i >= 0; --i)
     {
-      fprintf(fp,"%llu\n%llu\n",e->pos.white_board,e->pos.black_board);
+        e->stack_pop();
+        // Save Pieces of player whose turn it is (U64)
+        // Save Pieces of other player (U64)
+        if (i % 2 == 0) // Black plays when num_moves is even. Save black first, then white.
+        { 
+            fprintf(fp,"%llu\n%llu\n",(unsigned long long)e->pos.black_board,(unsigned long long)e->pos.white_board);
+        }
+        else // White plays when num_moves is odd. Save white first, then black.
+        {
+            fprintf(fp,"%llu\n%llu\n",e->pos.white_board,e->pos.black_board);
+        }
+
+        // Save monte carlo search results (64 x 32 bit floats)
+        for (int j = 0; j < 64; ++j)
+        {
+            fprintf(fp,"%g\n", MC_chances[i][j]); // MC chances for move i square j
+        }
+        
+
+        // Save if current player won (1 x Int)
+        // i % 2 == 0 for black. result is 0 for black win.
+        // i % 2 == 1 for white. result is 1 for white win.
+        fprintf(fp,"%d\n",(result == 2 ? 2 : ((i % 2) == result)));
+        
     }
 
-    // Save monte carlo search results (64 x 32 bit floats)
-    for (int j = 0; j < 64; ++j)
-    {
-      fprintf(fp,"%g\n", MC_chances[i][j]); // MC chances for move i square j
-    }
-    
-
-    // Save if current player won (1 x Int)
-    // i % 2 == 0 for black. result is 0 for black win.
-    // i % 2 == 1 for white. result is 1 for white win.
-    fprintf(fp,"%d\n",(result == 2 ? 2 : ((i % 2) == result)));
-    
-  }
-
-  fclose(fp);
+    fclose(fp);
 }
 
 /* INPUT:  
@@ -142,41 +171,41 @@ void save_game_info(std::string model_path, int local_rank, int game_number, Eng
  */
 void read_game_info(std::string game_path, int *n_moves, U64 *player_boards, U64 *opponent_boards, float **MCvals, int *result)
 {
-  // Open file
-  FILE *fp = fopen(game_path.c_str(),"r");
-  // Read number of moves
-  char *buf = (char *) calloc(30,sizeof(char));
-  fgets(buf,30,fp);
-  *n_moves = atoi(buf);
-  // Allocate memory
-  player_boards = (U64 *) calloc(n_moves[0], sizeof(U64)); 
-  opponent_boards = (U64 *) calloc(n_moves[0], sizeof(U64)); 
-  MCvals = (float **) calloc(n_moves[0], sizeof(float *));
-  result = (int *) calloc(n_moves[0], sizeof(int));
-  // Loop over number of moves
-  for (int i = n_moves[0]-1;i >= 0; --i)
-  {
-    // Read player board
+    // Open file
+    FILE *fp = fopen(game_path.c_str(),"r");
+    // Read number of moves
+    char *buf = (char *) calloc(30,sizeof(char));
     fgets(buf,30,fp);
-    // Turn a string rep of U64 into a U64 rep and store in player_boards[i]
-    sscanf(buf,"%llu",&(player_boards[i]));
-    // Read opponent board
-    fgets(buf,30,fp);
-    // Turn a string rep of U64 into a U64 rep and store in opponent_boards[i]
-    sscanf(buf,"%llu",&(opponent_boards[i]));
-    // Read 64 previous MC search results
-    MCvals[i] = (float *) calloc(64,sizeof(float));
-    for (int j = 0; j < 64; ++j)
+    *n_moves = atoi(buf);
+    // Allocate memory
+    player_boards = (U64 *) calloc(n_moves[0], sizeof(U64)); 
+    opponent_boards = (U64 *) calloc(n_moves[0], sizeof(U64)); 
+    MCvals = (float **) calloc(n_moves[0], sizeof(float *));
+    result = (int *) calloc(n_moves[0], sizeof(int));
+    // Loop over number of moves
+    for (int i = n_moves[0]-1;i >= 0; --i)
     {
-      fgets(buf,30,fp);
-      MCvals[i][j] = atof(buf);
-    }    
-    // Read winner 
-    fgets(buf,30,fp);
-    result[i] = atoi(buf);
-  }
-  // Close file
-  fclose(fp);
+        // Read player board
+        fgets(buf,30,fp);
+        // Turn a string rep of U64 into a U64 rep and store in player_boards[i]
+        sscanf(buf,"%llu",&(player_boards[i]));
+        // Read opponent board
+        fgets(buf,30,fp);
+        // Turn a string rep of U64 into a U64 rep and store in opponent_boards[i]
+        sscanf(buf,"%llu",&(opponent_boards[i]));
+        // Read 64 previous MC search results
+        MCvals[i] = (float *) calloc(64,sizeof(float));
+        for (int j = 0; j < 64; ++j)
+        {
+            fgets(buf, 30, fp);
+            MCvals[i][j] = atof(buf);
+        }    
+        // Read winner 
+        fgets(buf,30,fp);
+        result[i] = atoi(buf);
+    }
+    // Close file
+    fclose(fp);
 }
 
 /*  INPUT:
@@ -186,17 +215,17 @@ void read_game_info(std::string game_path, int *n_moves, U64 *player_boards, U64
  */
 
 void save_timer_info(std::string model_path, int local_rank, 
-                         std::chrono::duration<double, std::nano> gt, 
-                         std::chrono::duration<double, std::nano> w1t, 
-                         std::chrono::duration<double, std::nano> pt,
-                         std::chrono::duration<double, std::nano> w2t)
+                                                 std::chrono::duration<double, std::nano> gt, 
+                                                 std::chrono::duration<double, std::nano> w1t, 
+                                                 std::chrono::duration<double, std::nano> pt,
+                                                 std::chrono::duration<double, std::nano> w2t)
 {
-  FILE *fp;
-  char *fnm = (char *) calloc(50,sizeof(char));
-  sprintf(fnm,"%s/games/%d.timers",model_path.c_str(),local_rank);
-  fp = fopen(fnm,"w");
-  fprintf(fp,"%g  %g  %g  %g",gt.count(), w1t.count(), pt.count(), w2t.count());
-  fclose(fp);
+    FILE *fp;
+    char *fnm = (char *) calloc(50,sizeof(char));
+    sprintf(fnm,"%s/games/%d.timers",model_path.c_str(),local_rank);
+    fp = fopen(fnm,"w");
+    fprintf(fp,"%g  %g  %g  %g",gt.count(), w1t.count(), pt.count(), w2t.count());
+    fclose(fp);
 }
 
 
@@ -208,164 +237,187 @@ int play_game(Engine* e, std::vector<MonteCarlo*> players, int* num_moves, float
     float *MCc;
     num_moves[0] = 0;
     move_list = e->generate_black_moves();
+
+    e->print_char();
+
     while(e->is_not_terminal(move_list, BLACK))
     {
-        move = players[BLACK]->move(move_list);
-        e->push_black_move(move);
-        MC_chances[num_moves[0]] = (float *) calloc(64,sizeof(float));
-        // When players was std::vector<Players *>, I couldn't do this without 
-        // the compiler complaining. See comment in main for more.
-        MCc = players[BLACK]->get_saved_q();
-        for (int i = 0; i < 64; ++i) { MC_chances[num_moves[0]][i] = MCc[i]; }
-        num_moves[0]++;
-        move_list = e->generate_white_moves();
-        if(e->is_terminal(move_list, WHITE))
-        {
-            break;
-        }
-        move = players[WHITE]->move(move_list);
-        e->push_white_move(move);
-        MC_chances[num_moves[0]] = (float *) calloc(64,sizeof(float));
-        MCc = players[WHITE]->get_saved_q();
-        for (int i = 0; i < 64; ++i) { MC_chances[num_moves[0]][i] = MCc[i]; }
-        num_moves[0]++;
-        move_list = e->generate_black_moves();
+            move = players[BLACK]->move(move_list);
+            e->push_black_move(move);
+            printf("move number %i\n", num_moves[0]);
+            e->print_char();
+        
+            MC_chances[num_moves[0]] = (float *) calloc(64,sizeof(float));
+            MCc = players[BLACK]->get_saved_q(); // When players was std::vector<Players *>, this errors
+            for (int i = 0; i < 64; ++i) 
+            { 
+                MC_chances[num_moves[0]][i] = MCc[i]; 
+            }
+
+            num_moves[0]++;
+            move_list = e->generate_white_moves();
+            if(e->is_terminal(move_list, WHITE))
+            {
+                break;
+            }
+
+            move = players[WHITE]->move(move_list);
+            e->push_white_move(move);
+            printf("move number %i\n", num_moves[0]);
+            e->print_char();
+            MC_chances[num_moves[0]] = (float *) calloc(64,sizeof(float));
+            MCc = players[WHITE]->get_saved_q();
+
+            for (int i = 0; i < 64; ++i) 
+            { 
+                MC_chances[num_moves[0]][i] = MCc[i]; 
+            }
+            
+            num_moves[0]++;
+            move_list = e->generate_black_moves();
     }
-    int winner = e->get_winner();
-    return winner;
+    return e->get_winner();
 }
 
 
 int main(int argc, char * argv[])
 {
-  int np, local_rank;
-  int games_per_proc = 2;  
-  int iterations = 0;
+    int np, local_rank;
+    int games_per_proc = 2;  
+    int iterations = 0;
 
-  Engine* e = new Engine();
+    bool print_on = true;
 
-  MPI_Init(&argc, &argv);
-  MPI_Comm_rank (MPI_COMM_WORLD, &local_rank);
-  MPI_Comm_size (MPI_COMM_WORLD, &np);
+    MPI_Init(&argc, &argv);
+    MPI_Comm_rank (MPI_COMM_WORLD, &local_rank);
+    MPI_Comm_size (MPI_COMM_WORLD, &np);
 
-  int not_converged = 1;
+    Engine* e = new Engine();
 
-  std::chrono::time_point<std::chrono::system_clock> game_start_timer, game_end_timer, wait1_start_timer, wait1_end_timer, param_start_timer, param_end_timer, wait2_start_timer, wait2_end_timer;
-  std::chrono::duration<double, std::nano> game_time_result, wait1_time_result, param_time_result, wait2_time_result;
-  
+    int not_converged = 1;
 
-  while (not_converged)
-  {
-    // Read in the new neural network
-    std::string model_path = get_newest_model_dir();
-    // Make the two players for the next game
-    // I had to change this to MonteCarlo* instead of Player* 
-    // because if it was Player*, then when I want to call
-    // get_saved_q() in the play_game function,
-    // the compiler complains
-
-/*
-param.cpp: In function ‘int play_game(Engine*, std::vector<Player*>, int*, float**)’:
-param.cpp:216:31: error: ‘class Player’ has no member named ‘get_saved_q’
-         MCc = players[BLACK]->get_saved_q();
-                               ^
-param.cpp:227:31: error: ‘class Player’ has no member named ‘get_saved_q’
-         MCc = players[WHITE]->get_saved_q();
-                               ^
-make: *** [param] Error 1
-*/
-    // But changing it to MonteCarlo* works...
-    // Although if we want to use a minimax in part of the parameterization,
-    // it won't work as it is now.
-    // std::vector<Player*> players;
-    std::vector<MonteCarlo*> players;
-    /* currently, there's an error when a MonteCarlo player tries to play */
-    players.push_back(new MonteCarlo(0, e, model_path, true )); // black
-    players.push_back(new MonteCarlo(1, e, model_path, true )); // white
-   
-    // Variable for the number of moves in the game
-    int *num_moves = (int *) calloc(1,sizeof(int));
-
+    std::chrono::time_point<std::chrono::system_clock> game_start_timer, game_end_timer, wait1_start_timer, wait1_end_timer, param_start_timer, param_end_timer, wait2_start_timer, wait2_end_timer;
+    std::chrono::duration<double, std::nano> game_time_result, wait1_time_result, param_time_result, wait2_time_result;
     
-    /*~*~*~*~*~ Possibly decrement a game timer here ~*~*~*~*~*/
-    game_start_timer = std::chrono::system_clock::now();
-    // Loop over the number of games we're playing per processor per model
-    for (int i = 0; i < games_per_proc; ++i)
+
+    while (not_converged)
     {
-      float **MC_chances = (float **) calloc(e->get_max_move_length(),sizeof(float *));
+        // Read in the new neural network
+        std::string model_path = get_newest_model_dir();
+        // Make the two players for the next game
+        // I had to change this to MonteCarlo* instead of Player* 
+        // because if it was Player*, then when I want to call
+        // get_saved_q() in the play_game function,
+        // the compiler complains
 
-      // result holds 0 for black win, 1 for white win, and 2 for draw
-      int result = play_game(e,players,num_moves, MC_chances);
-      // save the game's info.
-      save_game_info(model_path,local_rank,i,e,num_moves[0],result,MC_chances);
+        /*
+        param.cpp: In function ‘int play_game(Engine*, std::vector<Player*>, int*, float**)’:
+        param.cpp:216:31: error: ‘class Player’ has no member named ‘get_saved_q’
+                         MCc = players[BLACK]->get_saved_q();
+                                                                     ^
+        param.cpp:227:31: error: ‘class Player’ has no member named ‘get_saved_q’
+                         MCc = players[WHITE]->get_saved_q();
+                                                                     ^
+        make: *** [param] Error 1
+        */
 
-      // Reset the engine for a new game
-      e->reset_engine();
+        // But changing it to MonteCarlo* works...
+        // Although if we want to use a minimax in part of the parameterization,
+        // it won't work as it is now.
+        // std::vector<Player*> players;
+        std::vector<MonteCarlo*> players;
+
+        /* currently, there's an error when a MonteCarlo player tries to play */
+        // black must be pushed onto the vector first
+        players.push_back(new MonteCarlo(BLACK, e, model_path, true )); // black
+        players.push_back(new MonteCarlo(WHITE, e, model_path, true )); // white
+     
+        // Variable for the number of moves in the game
+        int *num_moves = (int *) calloc(1, sizeof(int));
+
+        
+        /*~*~*~*~*~ Possibly decrement a game timer here ~*~*~*~*~*/
+        game_start_timer = std::chrono::system_clock::now();
+        // Loop over the number of games we're playing per processor per model
+        for (int i = 0; i < games_per_proc; ++i)
+        {
+            if(print_on) std::cout << "Playing game " << i + games_per_proc * local_rank << " on processor: " << local_rank << std::endl;
+            float **MC_chances = (float **) calloc(e->get_max_move_length(),sizeof(float *));
+
+            // result holds 0 for black win, 1 for white win, and 2 for draw
+            int result = play_game(e, players, num_moves, MC_chances);
+            if(print_on) std::cout << "Processor: " << local_rank << " finished playing game, saving data now to path: " << model_path << std::endl;
+            // save the game's info.
+            save_game_info(model_path, local_rank, i, e, num_moves[0], result, MC_chances);
+
+            if(print_on) std::cout << "Processor: " << local_rank << " finished saving data, resetting engine now." << std::endl;
+            // Reset the engine for a new game
+            e->reset_engine();
+        }
+        players.clear();
+
+        
+        /*~*~*~*~*~ Possibly increment game timer here ~*~*~*~*~*/
+        game_end_timer = std::chrono::system_clock::now();
+        game_time_result = cast_nano2(game_end_timer-game_start_timer);
+        
+        /*~*~*~*~*~ Possibly decrement wait1 timer here ~*~*~*~*~*/
+        wait1_start_timer = std::chrono::system_clock::now();    
+
+        MPI_Barrier(MPI_COMM_WORLD);
+
+        /*~*~*~*~*~ Possibly increment wait1 timer here ~*~*~*~*~*/
+        wait1_end_timer = std::chrono::system_clock::now();
+        wait1_time_result = cast_nano2(wait1_end_timer - wait1_start_timer);
+
+        /*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~ Parameterize new model ~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*/
+        /*~*~*~ Possibly decrement a parameterization timer here ~*~*~*/   
+        param_start_timer = std::chrono::system_clock::now();
+
+        // Check difference between new model and old model to determine convergence 
+
+        // I have been assuming the plan is to submit one program to the cluster
+        //     that uses as many nodes/GPUs as we can get our hands on.
+        // That program will repeatedly play batches of games and update the neural network
+        //     until some convergence criteria (or the job gets killed for taking too long)
+        // That is this program.
+        // If this is NOT the plan, then I assume the plan will be 
+        // (1) run batch 0 of games 
+        // (2) parameterize neural network 
+        // (3) run batch 1 of games using neural network from previous batch
+        // (4) update neural network with batch 1 games
+        // (5) run batch 2 of games using neural network from previous batch
+        // (6) update neural network with batch 2 games
+        // ...
+        // Where each step requires us (or a higher-up program) to submit the relevant job to the cluster
+        // In that case, nothing needs to go in the previous section "Parameterize new model"
+        // and here, simply put not_converged = 0; so we break out of the while loop.
+
+        not_converged = 0;
+
+        /*~*~*~ Possibly increment a parameterization timer here ~*~*~*/
+        param_end_timer = std::chrono::system_clock::now();
+        param_time_result = cast_nano2(param_end_timer - param_start_timer);
+
+        /*~*~*~ Possibly decrement a wait2 timer here ~*~*~*/
+        wait2_start_timer = std::chrono::system_clock::now();    
+
+        ++iterations;
+        MPI_Barrier(MPI_COMM_WORLD);
+        
+        /*~*~*~ Possibly increment a wait2 timer here ~*~*~*/
+        wait2_end_timer = std::chrono::system_clock::now();
+        wait2_time_result = cast_nano2(wait2_end_timer - wait2_start_timer);
+
+        /*~*~*~ Possibly save all of the timer information ~*~*~*/
+        save_timer_info(model_path,local_rank,game_time_result,wait1_time_result,param_time_result,wait2_time_result);
+
     }
-    players.clear();
 
-    
-    /*~*~*~*~*~ Possibly increment game timer here ~*~*~*~*~*/
-    game_end_timer = std::chrono::system_clock::now();
-    game_time_result = cast_nano2(game_end_timer-game_start_timer);
-    
-    /*~*~*~*~*~ Possibly decrement wait1 timer here ~*~*~*~*~*/
-    wait1_start_timer = std::chrono::system_clock::now();    
-
-    MPI_Barrier(MPI_COMM_WORLD);
-
-    /*~*~*~*~*~ Possibly increment wait1 timer here ~*~*~*~*~*/
-    wait1_end_timer = std::chrono::system_clock::now();
-    wait1_time_result = cast_nano2(wait1_end_timer - wait1_start_timer);
-
-/*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~ Parameterize new model ~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*/
-    /*~*~*~ Possibly decrement a parameterization timer here ~*~*~*/   
-    param_start_timer = std::chrono::system_clock::now();
-
-    // Check difference between new model and old model to determine convergence 
-
-    // I have been assuming the plan is to submit one program to the cluster
-    //     that uses as many nodes/GPUs as we can get our hands on.
-    // That program will repeatedly play batches of games and update the neural network
-    //     until some convergence criteria (or the job gets killed for taking too long)
-    // That is this program.
-    // If this is NOT the plan, then I assume the plan will be 
-    // (1) run batch 0 of games 
-    // (2) parameterize neural network 
-    // (3) run batch 1 of games using neural network from previous batch
-    // (4) update neural network with batch 1 games
-    // (5) run batch 2 of games using neural network from previous batch
-    // (6) update neural network with batch 2 games
-    // ...
-    // Where each step requires us (or a higher-up program) to submit the relevant job to the cluster
-    // In that case, nothing needs to go in the previous section "Parameterize new model"
-    // and here, simply put not_converged = 0; so we break out of the while loop.
-
-    not_converged = 0;
-
-    /*~*~*~ Possibly increment a parameterization timer here ~*~*~*/
-    param_end_timer = std::chrono::system_clock::now();
-    param_time_result = cast_nano2(param_end_timer - param_start_timer);
-
-    /*~*~*~ Possibly decrement a wait2 timer here ~*~*~*/
-    wait2_start_timer = std::chrono::system_clock::now();    
-
-    ++iterations;
-    MPI_Barrier(MPI_COMM_WORLD);
-    
-    /*~*~*~ Possibly increment a wait2 timer here ~*~*~*/
-    wait2_end_timer = std::chrono::system_clock::now();
-    wait2_time_result = cast_nano2(wait2_end_timer - wait2_start_timer);
-
-    /*~*~*~ Possibly save all of the timer information ~*~*~*/
-    save_timer_info(model_path,local_rank,game_time_result,wait1_time_result,param_time_result,wait2_time_result);
-
-  }
-
-  if (local_rank == 0) { fprintf(stderr,"We went through %d iterations of playing games and reparameterzing the neural network\n",iterations); }
+    if (local_rank == 0) { fprintf(stderr,"We went through %d iterations of playing games and reparameterzing the neural network\n",iterations); }
 
 
-  MPI_Finalize();
+    MPI_Finalize();
 
-  return 0;
+    return 0;
 }

@@ -361,6 +361,10 @@ int MonteCarlo::move(int* move_list)
     {
         return -1;
     }
+    if(move_list[0] == 1) // if only one choice return only move
+    {
+        return move_list[1];
+    }
 
     // setting up root node info
     Node* root = create_default_node();
