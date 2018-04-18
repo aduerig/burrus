@@ -8,6 +8,9 @@
 *  mpirun -n num_proccessors ./param
 */
 
+// loads
+// module load gcc mpi/gcc_openmpi
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <iostream>

@@ -21,6 +21,11 @@ GLOBAL_BATCH_SIZE = 64
 # may be needed to train batchnorm features
 
 
+# to interact with the gpu, make sure the following are loaded
+# slurm/default and psc_path/1.1
+# then interact -gpu
+# then module load tensorflow/1.5_gpu
+
 
 # - conv bloc is:
 #     - 128 filters of kernal size 3x3 with stride 1 (orig paper is 256)
@@ -326,7 +331,7 @@ def main():
     init = tf.global_variables_initializer()
 
     # training
-    with tf.Session() as sess:
+    with tf.Session(config=tf.ConfigProto(log_device_placement=True)) as sess:
         sess.run(init)
 
         old_model_dir, new_model_dir = get_model_directories()
