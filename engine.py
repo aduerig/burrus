@@ -4,46 +4,55 @@ class Engine:
 	def __init__(self,):
 		self.board = [[None for i in range(8)] for i in range(8)]
 
-	def set_board_to_beginning(self):
-		self.board = [[None for i in range(8)] for i in range(8)]
+	def set_board_to_beginning(self, board = None):
+		if board == None:
+			board = self.board
+		board = [[None for i in range(8)] for i in range(8)]
 
-		self.board[3][3] = 'W'
-		self.board[3][4] = 'B'
-		self.board[4][4] = 'W'
-		self.board[4][3] = 'B'
+		board[3][3] = 'W'
+		board[3][4] = 'B'
+		board[4][4] = 'W'
+		board[4][3] = 'B'
 
-	def get_moves(self, player):
+	def get_moves(self, player, board = None):
+		if board == None:
+			board = self.board
 		moves = []
-		for x in range(len(self.board)):
-			for y in range(len(self.board)):
-				if self.is_loc_move(x,y,player):
+		for x in range(len(board)):
+			for y in range(len(board)):
+				if self.is_loc_move(x,y,player, board):
 					moves.append((x,y))
 		return moves
 
-	def is_loc_move(self, x, y,player):
+	def is_loc_move(self, x, y,player, board=None):
+		if board == None:
+			board = self.board
 		moves = []
-		if self.board[x][y] is None:
+		if board[x][y] is None:
 			for path in [(0,1),(1,0),(1,1),(1,-1),(0,-1),(-1,0),(-1,-1),(-1,1)]:
 				i=2
-				if x+path[0] < 8 and x+path[0] >=0 and y+path[1] < 8 and y+path[1] >= 0 and opposite(self.board[x+path[0]][y+path[1]]) == player:
-					while x+i*path[0] < 8 and x+i*path[0] >=0 and y+i*path[1] < 8 and y+i*path[1] >= 0 and opposite(self.board[x+i*path[0]][y+i*path[1]]) == player:
+				if x+path[0] < 8 and x+path[0] >=0 and y+path[1] < 8 and y+path[1] >= 0 and opposite(board[x+path[0]][y+path[1]]) == player:
+					while x+i*path[0] < 8 and x+i*path[0] >=0 and y+i*path[1] < 8 and y+i*path[1] >= 0 and opposite(board[x+i*path[0]][y+i*path[1]]) == player:
 						i+=1
-					if x+i*path[0] < 8 and x+i*path[0] >=0 and y+i*path[1] < 8 and y+i*path[1] >= 0 and self.board[x+i*path[0]][y+i*path[1]] == player:
+					if x+i*path[0] < 8 and x+i*path[0] >=0 and y+i*path[1] < 8 and y+i*path[1] >= 0 and board[x+i*path[0]][y+i*path[1]] == player:
 						return True
 		return False
 
 	#doesn't check if move is legal
-	def play_move(self, move,player):
+	def play_move(self, move,player, board=None):
+		if board == None:
+			board = self.board
 		x,y = move
-		self.board[x][y] = player
+		board[x][y] = player
 		for path in [(0,1),(1,0),(1,1),(1,-1),(0,-1),(-1,0),(-1,-1),(-1,1)]:
 			i=2
-			if x+path[0] < 8 and x+path[0] >=0 and y+path[1] < 8 and y+path[1] >= 0 and opposite(self.board[x+path[0]][y+path[1]]) == player:
-				while x+i*path[0] < 8 and x+i*path[0] >=0 and y+i*path[1] < 8 and y+i*path[1] >= 0 and opposite(self.board[x+i*path[0]][y+i*path[1]]) == player:
+			if x+path[0] < 8 and x+path[0] >=0 and y+path[1] < 8 and y+path[1] >= 0 and opposite(board[x+path[0]][y+path[1]]) == player:
+				while x+i*path[0] < 8 and x+i*path[0] >=0 and y+i*path[1] < 8 and y+i*path[1] >= 0 and opposite(board[x+i*path[0]][y+i*path[1]]) == player:
 					i+=1
-				if x+i*path[0] < 8 and x+i*path[0] >=0 and y+i*path[1] < 8 and y+i*path[1] >= 0 and self.board[x+i*path[0]][y+i*path[1]] == player:
+				if x+i*path[0] < 8 and x+i*path[0] >=0 and y+i*path[1] < 8 and y+i*path[1] >= 0 and board[x+i*path[0]][y+i*path[1]] == player:
 					for i_iter in range(1, i):
-						self.board[x+i_iter*path[0]][y+i_iter*path[1]] = player
+						board[x+i_iter*path[0]][y+i_iter*path[1]] = player
+	
 	def __str__(self):
 		str = ''
 		for row in self.board:
@@ -55,10 +64,12 @@ class Engine:
 			str += '\n'
 		return str
 
-	def winning_player(self):
+	def winning_player(self, board = None):
+		if board == None:
+			board = self.board
 		w = 0
 		b = 0
-		for row in self.board:
+		for row in board:
 			for piece in row:
 				if piece == 'W':
 					w += 1

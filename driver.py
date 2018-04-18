@@ -19,6 +19,8 @@ def main():
 	players =  {'B': models[options.player_1]('B'),
 	 			'W': models[options.player_2]('W')}
 	e = Engine()
+
+	# game loop
 	for _i in range(int(options.num_games)):
 		over = False
 		e.set_board_to_beginning()
