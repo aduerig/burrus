@@ -5,9 +5,20 @@
 using namespace std;
 using namespace tensorflow;
 
+
+// module load slurm/default psc_path/1.1
+
+//interact -gpu
+
 // module load java
 // module load tensorflow/1.5_gpu
 // module load bazel
+
+
+// TEMP STEP
+// to configure tensorflow run ./configure
+// cuda may be at?: /opt/packages/cuda/8.0
+// END TEMP STEP
 
 
 // to build run
