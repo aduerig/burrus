@@ -14,8 +14,6 @@
 #include <inttypes.h>
 #include <unistd.h>
 
-#include "utils.h"
-
 struct new_params
 {
     int size;
@@ -32,6 +30,9 @@ void call_python_script_helper(new_params params);
 std::string get_current_time();
 void fill_random_ints(int* ints_to_fill, int num_ints);
 std::string gen_random(const int len);
+int acquire_semaphore(sem_t *);
+int release_semaphore(sem_t *);
+
 
 int main()
 { 
@@ -259,6 +260,8 @@ int main()
     free(dummy_int_arr);
     free(last_dummy_arr_sent);
     free(float_reciever);
+
+    printf("c++ script has finished\n");
     return 0; 
 }
 
@@ -312,4 +315,26 @@ std::string gen_random(const int len)
         new_str[i] = alphanum[rand() % (sizeof(alphanum) - 1)];
     }
     return new_str;
+}
+
+int release_semaphore(sem_t *pSemaphore) 
+{
+    int rc = 0;
+    rc = sem_post(pSemaphore);
+    if(rc) 
+    {
+        printf("Releasing the semaphore failed; errno is %d\n", errno);
+    }
+    return rc;
+}
+
+int acquire_semaphore(sem_t *pSemaphore) 
+{
+    int rc = 0;
+    rc = sem_wait(pSemaphore);
+    if(rc) 
+    {
+        printf("Acquiring the semaphore failed; errno is %d\n", errno);
+    }
+    return rc;
 }

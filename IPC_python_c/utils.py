@@ -55,6 +55,7 @@ def read_send_code(mapfile, write_file):
     mapfile.seek(0)
     # write_file.write("reading code\n")
 
+    # old method
     # code_str = ""
     # code_str += mapfile.read_byte()
     # code_str += mapfile.read_byte()
@@ -89,7 +90,7 @@ def read_ints_from_memory(mapfile, write_file):
     # https://stackoverflow.com/questions/8461798/how-can-i-struct-unpack-many-numbers-at-once
     inters = struct.unpack("<128L", s)
 
-    # write_file.write("parsed ints ")
+    write_file.write("parsed ints ")
     # for i in inters:
     #     s = "{0}, ".format(i)
     #     write_file.write(s)
