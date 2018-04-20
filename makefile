@@ -5,11 +5,13 @@ DRIVER_HEADERS = engine.hpp player.hpp
 PLAY_HEADERS = engine.hpp player.hpp
 PARAM_HEADERS = engine.hpp player.hpp
 
+
 DRIVER_OBJECTS = engine.cpp driver.cpp player.cpp
 PLAY_OBJECTS = play.cpp engine.cpp player.cpp
-PARAM_OBJECTS = engine.cpp player.cpp param.cpp
+PARAM_OBJECTS = engine.cpp player.cpp param_serial.cpp
 
-all: driver play param
+
+all: driver play param himpi
 
 play: $(PLAY_OBJECTS)
 	$(CC) $(CFLAGS) $(PLAY_HEADERS) $(PLAY_OBJECTS) -o play
@@ -20,8 +22,11 @@ driver: $(DRIVER_OBJECTS)
 tensor_driver:
 	$(CC) $(CFLAGS) tensorflow_test.cpp -o tensor_driver
 
-param:
-	$(MPICC) $(CFLAGS) $(PARAM_HEADERS) $(PARAM_OBJECTS) -o param
+param: $(PARAM_OBJECTS)
+	$(CC) $(CFLAGS) $(PARAM_HEADERS) $(PARAM_OBJECTS) -o param_serial
+
+himpi:
+	$(MPICC) $(CFLAGS) hi_mpi.cpp -o hi_mpi
 
 clean:
 	-rm -f driver
@@ -29,4 +34,4 @@ clean:
 	-rm -f callgrind.out.*
 	-rm -f out.log
 	-rm -f tensor_driver
-	-rm -f param
+	-rm -f param_serial
