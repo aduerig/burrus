@@ -15,6 +15,15 @@ import posix_ipc
 import utils
 
 
+# THIS SCRIPT REQUIRES NUMPY > 1.9
+# module load tensorflow/1.5_gpu loads an acceptable version of numpy
+
+# THIS SCRIPT ALSO REQUIRES posix_ipc
+# run pip insall --user posix_ipc to get it installed
+
+# bridges runs this script 2x slower than my computer (9 seconds for 500000 iterations)
+
+
 def serve_requests(memory, semaphore, mapfile, write_file):
     curr_iter = 0
     send_code = 0
