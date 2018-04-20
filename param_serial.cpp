@@ -16,15 +16,8 @@
 #include <fstream>
 #include <string>
 #include <vector>
-//#include "mpi.h"
 #include "engine.hpp"
 #include "player.hpp"
-
-/* MRD stole this from player.cpp */
-//std::chrono::duration<double, std::nano> cast_nano2(std::chrono::duration<double> x)
-//{
-//    return std::chrono::duration_cast<std::chrono::nanoseconds>(x);
-//}
 
 
 /*  
@@ -39,26 +32,6 @@
  * So, it returns the directory for that model.
  *  
  */
-
-// std::string get_newest_model_dir()
-// {
-//     FILE *fp;
-//     char *fnm = (char *) calloc(50,sizeof(char));
-//     int i = 0;
-//     do
-//     {
-//         sprintf(fnm,"../data/model_%d/checkpoint",i);
-//         fp = fopen(fnm,"r");
-//         if (!fp)
-//         {
-//             sprintf(fnm,"../data/model_%d",i-1);
-//             std::string model (fnm); 
-//             return model;
-//         }
-//         fclose(fp);
-//         ++i;
-//     } while (1);
-// }
 
 std::string get_newest_model_dir()
 {
@@ -290,12 +263,7 @@ int play_game(Engine* e, std::vector<MonteCarlo*> players, int* num_moves, float
 int main(int argc, char * argv[])
 {
     int local_rank = -1, games_per_proc = -1;
-//    int games_per_iteration = 25000;  
-
     bool print_on = true;
-//    MPI_Init(&argc, &argv);
-//    MPI_Comm_rank (MPI_COMM_WORLD, &local_rank);
-//    MPI_Comm_size (MPI_COMM_WORLD, &np);
 
 
     for (int i = 0; i < argc; ++i)
@@ -330,10 +298,12 @@ int main(int argc, char * argv[])
     
 
     // Read in the new neural network
-if (print_on) std::cout << "local_rank: " << local_rank << " about to get model path " << std::endl; 
+    if (print_on) std::cout << "local_rank: " << local_rank << " about to get model path " << std::endl; 
+    
     std::string model_path = get_newest_model_dir();
-if (print_on) std::cout << "local_rank: " << local_rank << " got the newest model dir" << std::endl;
-if (print_on) std::cout << "local_rank: " << local_rank << " model_path: " << model_path << std::endl;
+    
+    if (print_on) std::cout << "local_rank: " << local_rank << " got the newest model dir" << std::endl;
+    if (print_on) std::cout << "local_rank: " << local_rank << " model_path: " << model_path << std::endl;
  
     // Make the two players for the next game
     // I had to change this to MonteCarlo* instead of Player* 
@@ -395,8 +365,6 @@ if (print_on) std::cout << "local_rank: " << local_rank << " model_path: " << mo
     /*~*~*~*~*~ Possibly decrement wait1 timer here ~*~*~*~*~*/
     wait1_start_timer = std::chrono::system_clock::now();    
 
-//    MPI_Barrier(MPI_COMM_WORLD);
-
     /*~*~*~*~*~ Possibly increment wait1 timer here ~*~*~*~*~*/
     wait1_end_timer = std::chrono::system_clock::now();
     wait1_time_result = cast_nano2(wait1_end_timer - wait1_start_timer);
@@ -405,8 +373,6 @@ if (print_on) std::cout << "local_rank: " << local_rank << " model_path: " << mo
     /*~*~*~ Possibly save all of the timer information ~*~*~*/
     save_timer_info(model_path,local_rank,game_time_result,wait1_time_result);
 
-
-//    MPI_Finalize();
 
     return 0;
 }
