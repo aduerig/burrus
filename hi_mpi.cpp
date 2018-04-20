@@ -13,13 +13,9 @@
 #include <stdio.h>
 #include <iostream>
 #include <string.h>
-//#include <chrono>
 #include <fstream>
 #include <string>
-//#include <vector>
 #include "mpi.h"
-//#include "engine.hpp"
-//#include "player.hpp"
 
 int main(int argc, char * argv[])
 {
@@ -53,9 +49,14 @@ int main(int argc, char * argv[])
 
     char *command = (char *) calloc(80,sizeof(char));
     sprintf(command,"./param_serial -rank %d -ngames %d",local_rank,n_games_per_proc);
+    
     if (print_on) std::cout << "local rank: " << local_rank << " about to do command: " << command << std::endl;
+    
     int status = system(command);
+    
     if (print_on) std::cout << "local rank: " << local_rank << " back from command" << std::endl;
+    
     MPI_Finalize();
+    
     return 0;
 }
