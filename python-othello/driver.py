@@ -6,6 +6,7 @@ from engine import Engine
 from random_model import RandomModel
 from montecarlo_model import MonteCarloModel
 from net_model import NetModel
+from cnnevaluator import CnnEvaluator
 
 
 def main():
@@ -30,7 +31,7 @@ def main():
     players =  {'B': models[options.player_1]('B'),
                 'W': models[options.player_2]('W')}
     e = Engine()
-
+    cnnEvaluator = CnnEvaluator()
     # generate n games
     data = {'W': {'boards':[], 'search_vals':[], 'results':[]},
             'B': {'boards':[], 'search_vals':[], 'results':[]}}
@@ -45,7 +46,7 @@ def main():
                 if len(e.get_moves(opposite(curr))) == 0:
                     break
                 curr = opposite(curr)
-            to_move = players[curr].choose_move(e, data[curr])
+            to_move = players[curr].choose_move(e, data[curr], cnnEvaluator)
             e.play_move(to_move, curr)
             curr=opposite(curr)
             if(options.printing == True):
@@ -54,7 +55,7 @@ def main():
         store_data(data, e.winning_player())
 
         print('Winning player:'+ e.winning_player())
-    write_to_file(data)
+    write_to_file(data, cnnEvaluator.model_number)
 
 
 #helpers
@@ -74,16 +75,18 @@ def store_data(data, winner):
         diff = len(data['W']['boards']) - len(data['W']['results'])
         data['W']['results'] += [p2 for i in range(diff)]
 
-def write_to_file(data):
+def write_to_file(data, num):
+    dir = "games_"+str(num)
     try:
-        os.makedirs("games")
+        os.makedirs(dir)
     except OSError as e:
         pass
     i=0
-    while os.path.exists(os.path.join("games","games%s.csv") % i):
+    #this should be replaced with a "rank" input from mpi
+    while os.path.exists(os.path.join(dir,"games%s.csv") % i):
         i+=1
     df = pd.DataFrame.from_dict(data['B']).append(pd.DataFrame.from_dict(data['W']))
-    df.to_csv(os.path.join("games","games%s.csv") % i)
+    df.to_csv(os.path.join(dir,"games%s.csv") % i)
 
 
 

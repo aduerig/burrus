@@ -137,13 +137,14 @@ def create_value_head(x, train_bool):
     # relu
     first_relu = tf.nn.relu(conv_bn_layer, name='value_head_relu1')
 
-    hidden_layer = tf.layers.dense(inputs=first_relu, units = 256, name='value_head_dense_to_dense') # only 64 possible moves, no activation
+    flattened_value = tf.reshape(first_relu, [-1, 8*8])
+
+    hidden_layer = tf.layers.dense(inputs=flattened_value, units = 256, name='value_head_dense_to_dense') # only 64 possible moves, no activation
 
     final_relu = tf.nn.relu(hidden_layer, name='value_head_relu2')
 
-    flattened_value = tf.reshape(final_relu, [-1, 8*8*4])
 
-    board_value_not_capped = tf.layers.dense(inputs=flattened_value, units = 1, name='value_head_dense_to_scaler') # only 64 possible moves, no activation
+    board_value_not_capped = tf.layers.dense(inputs=final_relu, units = 1, name='value_head_dense_to_scaler') # only 64 possible moves, no activation
 
     board_value = tf.nn.tanh(board_value_not_capped, name='value_head_output')
 

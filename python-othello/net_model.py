@@ -1,10 +1,11 @@
 from copy import deepcopy
-ITERATIONS = 10
+ITERATIONS = 20
 
 class NetModel:
     def __init__(self, player):
         self.player = player
-    def choose_move(self, e, data):
+    def choose_move(self, e, data, cnn):
+        # cnn.evaluate_board(e, e.board) #for fun
         moves = e.get_moves(self.player)
         if len(moves)==1:
             return moves[0]
@@ -14,6 +15,8 @@ class NetModel:
 
         for _c in range(ITERATIONS):
             self.traverse(root, e)
+
+
         vals = []
         for child in root.children:
             vals.append(child.value)
