@@ -6,14 +6,13 @@ import hashlib
 import struct
 import time
 import numpy as np
+import argparse
 
 # 3rd party modules
 import posix_ipc
 
-# Utils for this demo
+# Utils
 import utils
-
-import argparse
 
 
 def serve_requests(memory, semaphore, mapfile, write_file):
@@ -21,13 +20,10 @@ def serve_requests(memory, semaphore, mapfile, write_file):
     send_code = 0
     set_floaters = np.arange(1, 65, dtype=np.float32)
     
-
-
     while True:
         # s = "on iteration: {0}\n".format(i)
         # write_file.write(s)
 
-        # Wait for Mrs. Premise to free up the semaphore.
         # write_file.write("Waiting to acquire the semaphore\n")
         semaphore.acquire()
         # write_file.write("Aquired the semaphore\n")
@@ -50,11 +46,9 @@ def serve_requests(memory, semaphore, mapfile, write_file):
         curr_iter += 1
 
         while send_code == 1:
-            # Release the semaphore...
             # write_file.write("Releasing the semaphore\n")
-
             semaphore.release()
-            # ...and wait for it to become available again.
+
             # write_file.write("Waiting to acquire the semaphore\n")
             semaphore.acquire()
 
@@ -84,7 +78,6 @@ def main(SEMAPHORE_NAME, SHARED_MEMORY_NAME):
 
 
     # semaphore opening and stuff
-
     memory = posix_ipc.SharedMemory(SHARED_MEMORY_NAME)
     semaphore = posix_ipc.Semaphore(SEMAPHORE_NAME)
 
@@ -96,8 +89,7 @@ def main(SEMAPHORE_NAME, SHARED_MEMORY_NAME):
     os.close(memory.fd)
 
 
-
-
+    # the actual serving, and time it
     time_start = time.time()
     total_iterations = serve_requests(memory, semaphore, mapfile, write_file)
     time_end = time.time()
@@ -107,11 +99,10 @@ def main(SEMAPHORE_NAME, SHARED_MEMORY_NAME):
 
     s = "{0} iterations complete in {1} seconds\n".format(total_iterations, time_end - time_start)
     write_file.write(s)
-    # write_file.write("ERRORS: {0}".format(ERRORS))
     write_file.close()
 
 
-PY_MAJOR_VERSION = sys.version_info[0]
+# PY_MAJOR_VERSION = sys.version_info[0]
 
 parser = argparse.ArgumentParser()
 parser.add_argument("semaphore_name")

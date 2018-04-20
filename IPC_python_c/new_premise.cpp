@@ -68,7 +68,7 @@ int main()
     params.semaphore_name = gen_random(10);
     params.shared_memory_name = gen_random(10);
     params.permissions = 0600;
-    params.iterations = 10000;
+    params.iterations = 500000;
 
     printf("params - size: %d\n", params.size);
     printf("params - semaphore_name: %s\n", params.semaphore_name.c_str());
@@ -209,49 +209,33 @@ int main()
             send_code = 2;
             memcpy(pSharedMemory_code, &send_code, sizeof(int32_t));
 
-            // Announce for one last time that the semaphore is free again so that 
-            // Mrs. Conclusion can exit.
-            // printf("Final release of the semaphore and send_code followed by a 5 second pause\n"); 
+            // Announce for one last time that the semaphore is free again so that python can quit
 
-            // send_code = 0;
-            // memcpy(pSharedMemory_code, &send_code, sizeof(int32_t));
+            printf("Final release of the semaphore and send_code followed by a 5 second pause\n"); 
+            rc = release_semaphore(pSemaphore);
+            sleep(5); // race condition, where the python takes 5 seconds to quit
 
-            // rc = release_semaphore(pSemaphore);
-            // sleep(5);
-            // ...before beginning to wait until it is free again. 
-            // Technically, this is bad practice. It's possible that on a 
-            // heavily loaded machine, Mrs. Conclusion wouldn't get a chance
-            // to acquire the semaphore. There really ought to be a loop here
-            // that waits for some sort of goodbye message but for purposes of
-            // simplicity I'm skipping that.
-
-            // printf("Final wait to acquire the semaphore\n"); 
-            // rc = acquire_semaphore(pSemaphore);
+            printf("Final wait to acquire the semaphore\n"); 
+            rc = acquire_semaphore(pSemaphore);
             if (!rc) 
             {
                 printf("Destroying the shared memory.\n");
 
-                // Un-mmap the memory...
-                rc = munmap(pSharedMemory_code, (size_t)params.size);
+                rc = munmap(pSharedMemory_code, (size_t)params.size); // Un mmap the memory
                 if (rc) 
                 {
                     printf("Unmapping the memory failed; errno is %d\n", errno);
-                    
                 }
                 
-                // ...close the file descriptor...
-                if (-1 == close(fd)) 
+                if (-1 == close(fd)) // close file descriptor 
                 {
                     printf("Closing the memory's file descriptor failed; errno is %d\n", errno);
-                    
                 }
             
-                // ...and destroy the shared memory.
-                rc = shm_unlink(params.shared_memory_name.c_str());
+                rc = shm_unlink(params.shared_memory_name.c_str()); // destroy the shared memory.
                 if (rc) 
                 {
                     printf("Unlinking the memory failed; errno is %d\n", errno);
-                    
                 }
             }
         }

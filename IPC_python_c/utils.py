@@ -55,34 +55,43 @@ def read_send_code(mapfile, write_file):
     mapfile.seek(0)
     # write_file.write("reading code\n")
 
-    code_str = ""
-    code_str += mapfile.read_byte()
-    code_str += mapfile.read_byte()
-    code_str += mapfile.read_byte()
-    code_str += mapfile.read_byte()
+    # code_str = ""
+    # code_str += mapfile.read_byte()
+    # code_str += mapfile.read_byte()
+    # code_str += mapfile.read_byte()
+    # code_str += mapfile.read_byte()
+    code_str = mapfile.read(4) # 1 int, 4 bytes
     code_int = struct.unpack("<L", code_str)[0]
+
     # write_file.write("code is: {0}\n".format(code_int))
 
     return code_int
 
 
 def read_ints_from_memory(mapfile, write_file):
-    mapfile.seek(4)
-    s = []
     # write_file.write("reading ints\n")
+    mapfile.seek(4)
 
     # 128 ints 4 bytes each    
-    for i in range(128 * 4):
-        c = mapfile.read_byte()
-        s.append(c)
-    s = ''.join(s)
+    # byte_arr = []
+    # for i in range(128 * 4):
+    #     c = mapfile.read_byte()
+    #     byte_arr.append(c)
+    # s = ''.join(byte_arr)
 
-    inters = []
-    for i in range(len(s)/4):
-        inters.append(struct.unpack("<L", s[(i*4):(i*4)+4])[0])
+    s = mapfile.read(128*4) # 128 ints 4 bytes each
+
+    # old method
+    # inters = []
+    # for i in range(len(s)/4):
+    #     inters.append(struct.unpack("<L", s[(i*4):(i*4)+4])[0])
+
+    # https://stackoverflow.com/questions/8461798/how-can-i-struct-unpack-many-numbers-at-once
+    inters = struct.unpack("<128L", s)
 
     # write_file.write("parsed ints ")
     # for i in inters:
     #     s = "{0}, ".format(i)
     #     write_file.write(s)
+    # write_file.write("\n")
     return inters
