@@ -142,9 +142,6 @@ def create_value_head(x, train_bool):
     # relu
     first_relu = tf.nn.relu(conv_bn_layer, name='value_head_relu1')
 
-    print(first_relu)
-    exit()
-
     flattened_value = tf.reshape(first_relu, [-1, 8*8])
 
     hidden_layer = tf.layers.dense(inputs=flattened_value, units = 256, name='value_head_dense_to_dense') # only 64 possible moves, no activation

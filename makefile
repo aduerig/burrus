@@ -4,7 +4,7 @@ CFLAGS = -std=c++14 -Ofast -Wall -Wno-unused-variable -Wno-unused-value -Wno-com
 DRIVER_HEADERS = engine.hpp player.hpp
 PLAY_HEADERS = engine.hpp player.hpp
 PARAM_HEADERS = engine.hpp player.hpp
-
+LINKER_OPTIONS= -lrt -lpthread
 
 DRIVER_OBJECTS = engine.cpp driver.cpp player.cpp
 PLAY_OBJECTS = play.cpp engine.cpp player.cpp
@@ -13,20 +13,17 @@ PARAM_OBJECTS = engine.cpp player.cpp param_serial.cpp
 
 all: driver play param himpi
 
-play: $(PLAY_OBJECTS)
-	$(CC) $(CFLAGS) $(PLAY_HEADERS) $(PLAY_OBJECTS) -o play
-
 driver: $(DRIVER_OBJECTS)
-	$(CC) $(CFLAGS) $(DRIVER_HEADERS) $(DRIVER_OBJECTS) -o driver
+	$(CC) $(CFLAGS) $(DRIVER_HEADERS) $(DRIVER_OBJECTS) -o driver $(LINKER_OPTIONS)
 
-tensor_driver:
-	$(CC) $(CFLAGS) tensorflow_test.cpp -o tensor_driver
+play: $(PLAY_OBJECTS)
+	$(CC) $(CFLAGS) $(PLAY_HEADERS) $(PLAY_OBJECTS) -o play $(LINKER_OPTIONS)
 
 param: $(PARAM_OBJECTS)
-	$(CC) $(CFLAGS) $(PARAM_HEADERS) $(PARAM_OBJECTS) -o param_serial
+	$(CC) $(CFLAGS) $(PARAM_HEADERS) $(PARAM_OBJECTS) -o param_serial $(LINKER_OPTIONS)
 
 himpi:
-	$(MPICC) $(CFLAGS) hi_mpi.cpp -o hi_mpi
+	$(MPICC) $(CFLAGS) hi_mpi.cpp -o hi_mpi $(LINKER_OPTIONS)
 
 clean:
 	-rm -f driver

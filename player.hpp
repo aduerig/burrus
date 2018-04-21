@@ -8,6 +8,21 @@
 #include <stdlib.h>
 #include <unordered_map>
 
+#include <errno.h> 
+#include <unistd.h> 
+#include <string.h>
+#include <time.h>
+#include <semaphore.h>
+#include <sys/types.h>
+#include <sys/mman.h>
+#include <fcntl.h>
+#include <stdarg.h>
+#include <cstdio>
+#include <stdlib.h>
+#include <string>
+#include <inttypes.h>
+#include <unistd.h>
+
 // typedef int (*foo_ptr_t)( int );
 typedef void (*fp)(int);
 
@@ -75,6 +90,14 @@ struct Node
     float total_action_value; // updated in the backprop stats
 };
 
+struct new_params
+{
+    int size;
+    std::string semaphore_name;
+    std::string shared_memory_name;
+    int permissions;
+};
+
 class MonteCarlo: public Player
 {
     public:
@@ -88,12 +111,26 @@ class MonteCarlo: public Player
         Node* max_child_puct(Node* node);
         Node* max_child_visits(Node* node);
         float compute_puct(Node* node);
+        void cleanup();
+
+        // model and communication
+        int setup_python_communication();
+        void send_end_code_python();
+        int destroy_communication();
+        void load_board_state_to_int_arr_sender(int p_color);
+        int send_and_recieve_model_data(int p_color);
+        void call_python_script_helper(new_params params);
+        void fill_random_ints(int* ints_to_fill, int num_ints);
+        std::string gen_random(const int len);
+        int acquire_semaphore(sem_t *);
+        int release_semaphore(sem_t *);
+
 
         // temporary funcs
         int temp_value_calc();
 
         // helper funcs
-        int color_multiplier(int color);
+        int color_multiplier(int p_color);
         int get_true_result();
         void init_default_node(Node* node);
         Node* create_default_node();
@@ -121,7 +158,25 @@ class MonteCarlo: public Player
         float saved_value;
         float* saved_q;
         bool print_on;
-};
+
+        // communication variables
+        sem_t *pSemaphore;
+        int rc;
+        void *pSharedMemory_code;
+        void *pSharedMemory_rest;
+        int fd;
+        struct new_params params;
+
+        // sender flag
+        int32_t send_code; // -1 is nothing, 0 is c sent, 1 is python sent
+
+        // data holders
+        int num_ints_send;
+        int num_floats_recieve;
+
+        int32_t* int_arr_sender;
+        float* float_arr_reciever;
+    };
 
 
 #endif

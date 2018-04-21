@@ -13,9 +13,6 @@ import posix_ipc
 import tensorflow as tf
 import numpy as np
 
-# Utils
-import utils
-
 
 # THIS SCRIPT REQUIRES NUMPY > 1.9
 # module load tensorflow/1.5_gpu loads an acceptable version of numpy
@@ -86,15 +83,22 @@ def read_ints_from_memory(mapfile, write_file):
     return inters
 
 
+def ensure_logging_directory():
+    # get newest model directory
+    data_dir_name = 'logs'
+    data_dir = os.path.join(os.getcwd(), data_dir_name)
+    
+    # ensure data_dir exists
+    if not os.path.isdir(data_dir):
+        print('MODEL: making data directory at {0}', data_dir)
+        os.mkdir(data_dir)
 
-def serve_requests(memory, semaphore, mapfile, MODEL_PATH, write_file):
-    requests_served = 0
+
+def serve_requests(memory, semaphore, mapfile, MODEL_NAME, write_file):
     send_code = 0
-    set_floaters = np.arange(1, 65, dtype=np.float32)
-
-
 
     with tf.Session() as sess:
+        MODEL_PATH = os.path.join(os.getcwd(), 'data', MODEL_NAME) # probably should error check that data exists
         write_file.write('Using model at: {0}'.format(MODEL_PATH))
 
         saver = tf.train.import_meta_graph(os.path.join(MODEL_PATH, 'model.ckpt.meta'))
@@ -108,9 +112,8 @@ def serve_requests(memory, semaphore, mapfile, MODEL_PATH, write_file):
 
 
         requests_served = 0
-        # serving loop
-        while True:
-            s = "request number: {0}\n".format(requests_served)
+        while True: # serving loop
+            s = "Request number: {0}\n".format(requests_served)
             write_file.write(s)
 
             # write_file.write("Waiting to acquire the semaphore\n")
@@ -119,7 +122,7 @@ def serve_requests(memory, semaphore, mapfile, MODEL_PATH, write_file):
 
 
             # recieve info form c++
-            inters = utils.read_ints_from_memory(mapfile, write_file)
+            inters = read_ints_from_memory(mapfile, write_file)
             
             
 
@@ -132,15 +135,10 @@ def serve_requests(memory, semaphore, mapfile, MODEL_PATH, write_file):
             together = np.append(policy_calced, value_calced)
             ######
 
-
-
-            # get floats to send back
-            # floats_to_send = utils.get_floats()
-            # floats_to_send = set_floaters
-            utils.write_floats_to_memory(mapfile, floats_to_send)
+            write_floats_to_memory(mapfile, together)
 
             send_code = 1
-            utils.write_send_code(mapfile, write_file)
+            write_send_code(mapfile, write_file)
 
             requests_served += 1
 
@@ -151,7 +149,7 @@ def serve_requests(memory, semaphore, mapfile, MODEL_PATH, write_file):
                 # write_file.write("Waiting to acquire the semaphore\n")
                 semaphore.acquire()
 
-                send_code = utils.read_send_code(mapfile, write_file)
+                send_code = read_send_code(mapfile, write_file)
 
             # write_file.write("Releasing the semaphore\n")
             semaphore.release()
@@ -164,7 +162,7 @@ def main(SEMAPHORE_NAME, SHARED_MEMORY_NAME, MODEL_PATH):
     filename = "python_output_{0}_{1}.txt".format(SEMAPHORE_NAME, SHARED_MEMORY_NAME)
     write_file = open(filename, 'w') # open file and overwrite
     
-    s = "INITIALIZING PYTHON\n"
+    s = "INITIALIZING PYTHON COMMUNICATOR\n"
     write_file.write(s)
 
     # write out init data
@@ -204,11 +202,11 @@ def main(SEMAPHORE_NAME, SHARED_MEMORY_NAME, MODEL_PATH):
 parser = argparse.ArgumentParser()
 parser.add_argument("semaphore_name")
 parser.add_argument("shared_memory_name")
-parser.add_argument("model_path")
+parser.add_argument("model_name")
 args = parser.parse_args()
 
 SEMAPHORE_NAME = args.semaphore_name
 SHARED_MEMORY_NAME = args.shared_memory_name
-MODEL_PATH = args.model_path
+MODEL_NAME = args.model_name
 
-main(SEMAPHORE_NAME, SHARED_MEMORY_NAME, MODEL_PATH)
+main(SEMAPHORE_NAME, SHARED_MEMORY_NAME, MODEL_NAME)

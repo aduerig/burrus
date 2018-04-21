@@ -239,6 +239,15 @@ int Engine::get_max_move_length()
     return max_move_length;
 }
 
+U64 Engine::get_color(int color)
+{
+    if(color)
+    {
+        return pos.white_board;
+    }
+    return pos.black_board;
+}
+
 std::string Engine::color_to_string(int color)
 {
     if(color == 1)
