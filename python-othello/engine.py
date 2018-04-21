@@ -83,16 +83,16 @@ class Engine:
             return 'B'
         return 'TIE'
         
-    def flat_board(self, board = None):
+    def flat_board(self, player, board = None):
         if board == None:
             board = self.board
         flat = [0 for i in range(128)]
         for i in range(8):
             for j in range(8):
                 curr = board[i][j]
-                if curr == 'B':
+                if curr == player: # first array has PLAYER's pieces
                     flat[i+j*8] = 1
-                if curr == 'W':
+                if curr == opposite(player):
                     flat[i+j*8+64] = 1
         return flat
 

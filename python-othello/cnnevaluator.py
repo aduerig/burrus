@@ -15,7 +15,7 @@ class CnnEvaluator:
 
 
     def evaluate_board(self, e, board):
-        flat = e.flat_board(board)
+        flat = e.flat_board(player, board)
         x_data = [flat]
         x_tensor = self.graph.get_tensor_by_name('x:0')
 
