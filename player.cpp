@@ -427,6 +427,14 @@ int MonteCarlo::move(int* move_list)
 
     curr_root = root;
 
+
+    // ADD NOISE
+    if(is_training)
+    {
+        // auto alpha = 0.03f * 361.0f / BOARD_SQUARES;
+    }
+
+
     int curr_sim = 0;
     int p_color = color;
     while(curr_sim < max_sims)
