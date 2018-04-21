@@ -52,7 +52,7 @@ int main(int argc, char * argv[])
     
     if (print_on) std::cout << "local rank: " << local_rank << " about to do command: " << command << std::endl;
     
-    int status = system(command);
+    int status = system("module list");
     
     if (print_on) std::cout << "local rank: " << local_rank << " back from command" << std::endl;
     

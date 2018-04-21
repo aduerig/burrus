@@ -362,7 +362,9 @@ def train():
             print(new_model_dir)
             saver.save(sess, os.path.join(new_model_dir, 'model.ckpt'))
             return 1
-        train_batch_gen = get_data(GLOBAL_BATCH_SIZE, old_model_dir)
+            
+        saver.restore(sess, os.path.join(old_model_dir, 'model.ckpt'))
+        train_batch_gen= get_data(GLOBAL_BATCH_SIZE, old_model_dir)
 
 
         for i in range(GLOBAL_TRAINING_STEPS):
