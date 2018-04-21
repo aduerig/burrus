@@ -1,13 +1,10 @@
 #!/bin/bash -l
-#SBATCH -W
 #SBATCH -N 1
 #SBATCH -n 8
 #SBATCH -t 0:10:00
 #SBATCH -p GPU-shared
 #SBATCH --gres=gpu:p100:2
 #SBATCH -J hi_mpi
-#SBATCH -o hi_mpi.out
-#SBATCH -e hi_mpi.err
  
 # This job requests use of one GPU node.
 # This requests 32 processors on said GPU node.
@@ -30,4 +27,11 @@ module load gcc mpi/gcc_openmpi
 module load tensorflow/1.5_gpu
 
 # -n arg should be equal to N * ntasks-per-node
-mpirun -n 8 ./hi_mpi -ngames 10000
+
+while :
+do
+sleep 1
+mpiexec -n 8 ./hi_mpi -ngames 10000
+sleep 1
+python cnn_resnet.py
+done

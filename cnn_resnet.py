@@ -292,6 +292,7 @@ def read_in_games(filename):
 
 # returns 1 when successful
 def train():
+    concat_files()
     x = tf.placeholder(tf.float32, shape=(None, 128), name='x')
     train_bool = tf.placeholder(tf.bool, name='train_bool')
     y_policy_labels = tf.placeholder(tf.float32, shape=(None, 64), name='y_policy_labels')
@@ -393,6 +394,23 @@ def train():
         os.mkdir(os.path.join(new_model_dir, 'games'))
         saver.save(sess, os.path.join(new_model_dir, 'mdel.ckpt'))
     return 1
+
+def concat_files():
+    out_filename = 'all_games.game'
+
+    model_count = len(next(os.walk(MODELS_DIRECTORY))[1])-1
+    latest_model_path = 'model_' + str(model_count)
+    path = os.path.join(MODELS_DIRECTORY, latest_model_path, 'games')
+    if not os.path.isdir(path):
+        return
+    if os.path.exists(os.path.join(path, out_filename)):
+        return
+    with open(os.path.join(path, out_filename), 'wb+') as outfile:
+        for file in os.listdir(path):
+            if file == out_filename or file[-5:] != '.game':
+                continue
+            with open(os.path.join(path, file), 'rb') as readfile:
+                outfile.write(readfile.read())
 
 def main():
     train()
