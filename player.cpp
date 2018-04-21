@@ -364,12 +364,31 @@ void Minimax::cleanup()
 MonteCarlo::MonteCarlo(int col, Engine* engine, std::string m_path, int sims, bool training) : Player(col, engine)
 {
     model_path = m_path;
+
+    
+    // asigning values to struct
+    params.semaphore_name = gen_random(10);
+    params.shared_memory_name = gen_random(10);
+    params.size = 4096;
+    // params.semaphore_name = "other_stuff";
+    // params.shared_memory_name = "shared_memory_1";
+    params.permissions = 0600;
+
+    printf("params - size: %d\n", params.size);
+    printf("params - semaphore_name: %s\n", params.semaphore_name.c_str());
+    printf("params - shared_memory_name: %s\n", params.shared_memory_name.c_str());
+    printf("params - permissions: %d\n", params.permissions);
+
+    call_python_script_helper(params);
+
+
     max_sims = sims;
     curr_root = NULL;
     is_training = training;
-    saved_q = (float*) malloc(64* sizeof(float));
+    saved_q = (float*) malloc(64 * sizeof(float));
     print_on = false;
     explore_constant = 1;
+    node_storage_counter = 0;
 
     int ret_val = setup_python_communication();
     if(ret_val == 1)
@@ -400,7 +419,9 @@ int MonteCarlo::move(int* move_list)
     Node* root = create_default_node();
     root->color = color;
     root->board_hash = e->hash_board();
-    node_storage.insert({root->board_hash, root});
+    // node_storage.insert({root->board_hash, root});
+    node_storage.insert({node_storage_counter, root});
+    node_storage_counter++;
 
     expand_node(root, move_list);
 
@@ -446,6 +467,7 @@ int MonteCarlo::move(int* move_list)
     {
         free(element.second);
     }
+    node_storage.clear();
 
     return best_node->move; // returns best immediate child node
 }
@@ -510,7 +532,9 @@ void MonteCarlo::expand_node(Node* node, int* move_list)
         new_node->is_pass = true;
         new_node->move = -1;
         new_node->policy = 1;
-        node_storage.insert({new_node->board_hash, new_node});
+        // node_storage.insert({new_node->board_hash, new_node});
+        node_storage.insert({node_storage_counter, new_node});
+        node_storage_counter++;
         
         if(print_on) printf("POST:\n");
         if(print_on) print_node_info(node);
@@ -543,7 +567,9 @@ void MonteCarlo::expand_node(Node* node, int* move_list)
         new_node->move = move_list[i+1];
         // CHECK IF move_list[i+1] IS THE PROPER INDEX
         new_node->policy = float_arr_reciever[move_list[i+1]]; // need network to run before this
-        node_storage.insert({new_node->board_hash, new_node});
+        // node_storage.insert({new_node->board_hash, new_node});
+        node_storage.insert({node_storage_counter, new_node});
+        node_storage_counter++;
         e->pop_move();
     }
     node->expanded = true;
@@ -616,6 +642,7 @@ void MonteCarlo::cleanup()
 {
     printf("begining MonteCarlo cleanup\n");
     int ret_val = destroy_communication();
+    free(saved_q);
     
     if(ret_val == 1)
     {
@@ -656,19 +683,6 @@ int MonteCarlo::setup_python_communication()
 
     
     printf("COMMUNICATION CHANNEL INITIALIZING IN C++!\n");
-    
-    // asigning values to struct
-    params.semaphore_name = gen_random(10);
-    params.shared_memory_name = gen_random(10);
-    params.size = 4096;
-    // params.semaphore_name = "other_stuff";
-    // params.shared_memory_name = "shared_memory_1";
-    params.permissions = 0600;
-
-    printf("params - size: %d\n", params.size);
-    printf("params - semaphore_name: %s\n", params.semaphore_name.c_str());
-    printf("params - shared_memory_name: %s\n", params.shared_memory_name.c_str());
-    printf("params - permissions: %d\n", params.permissions);
 
     // Create the shared memory
     fd = shm_open(params.shared_memory_name.c_str(), O_RDWR | O_CREAT | O_EXCL, params.permissions);    
@@ -722,7 +736,6 @@ int MonteCarlo::setup_python_communication()
         else 
         {
             printf("pSemaphore =  %p\n", (void *)pSemaphore);
-            call_python_script_helper(params);
         }
     }
 
@@ -894,6 +907,8 @@ void MonteCarlo::call_python_script_helper(new_params params)
     std::string command = "python python_model_communicator.py " + params.semaphore_name + " " + 
                             params.shared_memory_name + " " + 
                             model_path;
+
+    printf("EXECUTING: %s\n", command.c_str());
     pid_t pid = fork();
     if(pid != 0)
     {

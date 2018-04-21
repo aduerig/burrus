@@ -155,6 +155,7 @@ class MonteCarlo: public Player
 
         // think about collisions, backprop will not go to correct parent
         std::unordered_map<U64, Node*> node_storage;
+        U64 node_storage_counter;
         
         Node* curr_root;
         bool is_training;

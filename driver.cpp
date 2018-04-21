@@ -80,9 +80,9 @@ int main()
     std::vector<Player*> players;
     // warning players must be instaniated in the right order, 0 then 1
     int is_training = 0;
-    // players.push_back(new MonteCarlo(BLACK, e, "model_0", 5, is_training)); // black
+    // players.push_back(new Rand(BLACK, e)); // black
+    players.push_back(new MonteCarlo(BLACK, e, "model_0", 5, is_training)); // black
     // players.push_back(new MonteCarlo(WHITE, e, "model_0", 500, is_training)); // white
-    players.push_back(new Rand(BLACK, e)); // black
     players.push_back(new Rand(WHITE, e)); // white
 
     int* num_moves = (int*) malloc(sizeof(int));
