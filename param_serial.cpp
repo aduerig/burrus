@@ -33,25 +33,27 @@
  *  
  */
 
-std::string get_newest_model_dir()
+std::string get_newest_model_name()
 {
     FILE *fp;
-    char *fnm = (char *) calloc(50,sizeof(char));
+    char *fnm = (char *) calloc(50, sizeof(char));
     int i = 0;
+    int model_name_int;
     do
     {
-        sprintf(fnm,"data/model_%d/checkpoint",i);
-        fp = fopen(fnm,"r");
+        sprintf(fnm,"data/model_%d/checkpoint", i);
+        fp = fopen(fnm, "r");
         if (!fp)
         {
-            if(i-1 < 0)
+            if(i - 1 < 0)
             {
                 printf("Exiting with return code 5 because no model folders exists in data/model\n");
                 exit(5);
             }
-            sprintf(fnm,"data/model_%d",i-1);
-            std::string model (fnm); 
-            return model;
+            // sprintf(fnm, "data/model_%d", i-1); # this returns full model path
+            model_name_int = i-1;
+            free(fnm);
+            return "model_" + std::to_string(model_name_int);
         }
         fclose(fp);
         ++i;
@@ -262,8 +264,10 @@ int play_game(Engine* e, std::vector<MonteCarlo*> players, int* num_moves, float
 
 int main(int argc, char * argv[])
 {
-    int local_rank = -1, games_per_proc = -1;
+    int local_rank = -1; 
+    int games_per_proc = -1;
     bool print_on = true;
+    int iterations_per_move = 100;
 
 
     for (int i = 0; i < argc; ++i)
@@ -292,19 +296,21 @@ int main(int argc, char * argv[])
 
     Engine* e = new Engine();
 
-
     std::chrono::time_point<std::chrono::system_clock> game_start_timer, game_end_timer, wait1_start_timer, wait1_end_timer;
     std::chrono::duration<double, std::nano> game_time_result, wait1_time_result;
     
 
-    // Read in the new neural network
+    // Read in the new neural network model name
     if (print_on) std::cout << "local_rank: " << local_rank << " about to get model path " << std::endl; 
     
-    std::string model_path = get_newest_model_dir();
-    
+    std::string model_name = get_newest_model_name();
+    std::string model_path = "data/" + model_name;
+
     if (print_on) std::cout << "local_rank: " << local_rank << " got the newest model dir" << std::endl;
-    if (print_on) std::cout << "local_rank: " << local_rank << " model_path: " << model_path << std::endl;
+    if (print_on) std::cout << "local_rank: " << local_rank << " model_name: " << model_name << std::endl;
  
+
+
     // Make the two players for the next game
     // I had to change this to MonteCarlo* instead of Player* 
     // because if it was Player*, then when I want to call
@@ -330,8 +336,8 @@ int main(int argc, char * argv[])
 
     /* currently, there's an error when a MonteCarlo player tries to play */
     // black must be pushed onto the vector first
-    players.push_back(new MonteCarlo(BLACK, e, model_path, true )); // black
-    players.push_back(new MonteCarlo(WHITE, e, model_path, true )); // white
+    players.push_back(new MonteCarlo(BLACK, e, model_name, iterations_per_move, true)); // black
+    players.push_back(new MonteCarlo(WHITE, e, model_name, iterations_per_move, true)); // white
      
     // Variable for the number of moves in the game
     int *num_moves = (int *) calloc(1, sizeof(int));
@@ -343,15 +349,17 @@ int main(int argc, char * argv[])
     for (int i = 0; i < games_per_proc; ++i)
     {
         if(print_on) std::cout << "Playing game " << i + games_per_proc * local_rank << " on processor: " << local_rank << std::endl;
-        float **MC_chances = (float **) calloc(e->get_max_move_length(),sizeof(float *));
-        float *saved_values = (float *) calloc(e->get_max_move_length(),sizeof(float));
+        float **MC_chances = (float **) calloc(e->get_max_move_length(), sizeof(float *));
+        float *saved_values = (float *) calloc(e->get_max_move_length(), sizeof(float));
         // result holds 0 for black win, 1 for white win, and 2 for draw
         int result = play_game(e, players, num_moves, MC_chances, saved_values);
         if(print_on) std::cout << "Processor: " << local_rank << " finished playing game, saving data now to path: " << model_path << std::endl;
         // save the game's info.
         save_game_info(model_path, local_rank, i, e, num_moves[0], result, MC_chances, saved_values);
         if(print_on) std::cout << "Processor: " << local_rank << " finished saving data, resetting engine now." << std::endl;
-        // Reset the engine for a new game
+        // free and eset the engine for a new game
+        free(MC_chances);
+        free(saved_values);
         e->reset_engine();
     }
     players.clear();
@@ -371,8 +379,19 @@ int main(int argc, char * argv[])
 
 
     /*~*~*~ Possibly save all of the timer information ~*~*~*/
-    save_timer_info(model_path,local_rank,game_time_result,wait1_time_result);
+    save_timer_info(model_name, local_rank, game_time_result, wait1_time_result);
 
+    // clean up
+    players[BLACK]->cleanup();
+    players[WHITE]->cleanup();
+
+    delete(players[0]);
+    delete(players[1]);
+    players.clear();
+    players.shrink_to_fit();
+    e->clean_up();
+    delete(e);
+    free(num_moves);
 
     return 0;
 }
