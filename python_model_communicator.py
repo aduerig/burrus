@@ -85,13 +85,13 @@ def read_ints_from_memory(mapfile, write_file):
 
 def ensure_logging_directory():
     # get newest model directory
-    data_dir_name = 'logs'
-    data_dir = os.path.join(os.getcwd(), data_dir_name)
+    log_dir_name = 'logs'
+    log_dir = os.path.join(os.getcwd(), log_dir_name)
     
     # ensure data_dir exists
-    if not os.path.isdir(data_dir):
-        print('MODEL: making data directory at {0}', data_dir)
-        os.mkdir(data_dir)
+    if not os.path.isdir(log_dir):
+        print('MODEL: making log directory at {0}', log_dir)
+        os.mkdir(log_dir)
 
 
 def serve_requests(memory, semaphore, mapfile, MODEL_NAME, write_file):
@@ -99,7 +99,7 @@ def serve_requests(memory, semaphore, mapfile, MODEL_NAME, write_file):
 
     with tf.Session() as sess:
         MODEL_PATH = os.path.join(os.getcwd(), 'data', MODEL_NAME) # probably should error check that data exists
-        write_file.write('Using model at: {0}'.format(MODEL_PATH))
+        write_file.write('Using model at: {0}\n'.format(MODEL_PATH))
 
         saver = tf.train.import_meta_graph(os.path.join(MODEL_PATH, 'model.ckpt.meta'))
         saver.restore(sess, os.path.join(MODEL_PATH, 'model.ckpt'))
@@ -160,7 +160,9 @@ def serve_requests(memory, semaphore, mapfile, MODEL_NAME, write_file):
 
 def main(SEMAPHORE_NAME, SHARED_MEMORY_NAME, MODEL_PATH):
     filename = "python_output_{0}_{1}.txt".format(SEMAPHORE_NAME, SHARED_MEMORY_NAME)
-    write_file = open(filename, 'w') # open file and overwrite
+    ensure_logging_directory()
+    file_path = os.path.join("logs", filename)
+    write_file = open(file_path, 'w') # open file and overwrite
     
     s = "INITIALIZING PYTHON COMMUNICATOR\n"
     write_file.write(s)

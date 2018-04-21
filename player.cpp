@@ -629,11 +629,11 @@ int MonteCarlo::setup_python_communication()
     printf("COMMUNICATION CHANNEL INITIALIZING IN C++!\n");
     
     // asigning values to struct
-    // params.semaphore_name = gen_random(10);
-    // params.shared_memory_name = gen_random(10);
+    params.semaphore_name = gen_random(10);
+    params.shared_memory_name = gen_random(10);
     params.size = 4096;
-    params.semaphore_name = "semaphore_1";
-    params.shared_memory_name = "shared_memory_1";
+    // params.semaphore_name = "other_stuff";
+    // params.shared_memory_name = "shared_memory_1";
     params.permissions = 0600;
 
     printf("params - size: %d\n", params.size);
