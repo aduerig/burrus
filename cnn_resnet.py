@@ -8,7 +8,7 @@ import tensorflow as tf
 import os
 import random
 
-tf.logging.set_verbosity(tf.logging.INFO)
+# tf.logging.set_verbosity(tf.logging.INFO)
 
 
 GLOBAL_LEARNING_RATE = .2
@@ -378,8 +378,8 @@ def train():
             if i % 20000:
                 pass
 
-    os.mkdir(new_model_dir)
-    saver.save(sess, os.path.join(new_model_dir, '/mdel.ckpt'))
+        os.mkdir(new_model_dir)
+        saver.save(sess, os.path.join(new_model_dir, '/mdel.ckpt'))
     return 1
 
 def main():
