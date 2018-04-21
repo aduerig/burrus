@@ -8,10 +8,10 @@ import tensorflow as tf
 import os
 import random
 
-# tf.logging.set_verbosity(tf.logging.INFO)
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
 
 GLOBAL_LEARNING_RATE = .2
-GLOBAL_TRAINING_STEPS = 100
+GLOBAL_TRAINING_STEPS = 1000
 GLOBAL_BATCH_SIZE = 64
 
 
@@ -258,6 +258,8 @@ def get_data(size, old_model_dir):
     y_true_value = np.array(y_true_value)
 
     train = [x_train, y_policy_labels, y_true_value]
+    print(train)
+    input()
     return get_inf_batch_gens(train, size)
 
 def bitfield(n):
@@ -359,7 +361,6 @@ def train():
             print(new_model_dir)
             saver.save(sess, os.path.join(new_model_dir, 'model.ckpt'))
             return 1
-
         train_batch_gen= get_data(GLOBAL_BATCH_SIZE, old_model_dir)
 
 
@@ -372,10 +373,10 @@ def train():
                 a_p = accuracy_policy.eval(feed_dict={
                         x: curr_batch_x, y_policy_labels: curr_batch_y_policy_labels,
                             train_bool: True})
-                a_v = accuracy_policy.eval(feed_dict={
-                        x: curr_batch_x, y_policy_labels: curr_batch_y_policy_labels,
+                a_v = accuracy_value.eval(feed_dict={
+                        x: curr_batch_x, y_true_value: curr_batch_y_true_value,
                             train_bool: True})
-                print('step {0}, training accuracy_policy {1}, training accuracy_value {1}'.format(i, 
+                print('step {0}, training accuracy_policy {1}, training accuracy_value {2}'.format(i, 
                             a_p, a_v))
             sess.run([train_step, extra_update_ops], feed_dict={x: curr_batch_x, 
                             y_policy_labels: curr_batch_y_policy_labels, 
@@ -386,7 +387,7 @@ def train():
                 pass
 
         os.mkdir(new_model_dir)
-        saver.save(sess, os.path.join(new_model_dir, '/mdel.ckpt'))
+        saver.save(sess, os.path.join(new_model_dir, 'mdel.ckpt'))
     return 1
 
 def main():
