@@ -8,6 +8,9 @@
  * mpirun -n num_proccessors ./param
  */
 
+// run serial to play 10 games of montecarlo vs montecarlo
+// ./param_serial -rank 0 -ngames 10
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -217,7 +220,7 @@ void save_timer_info(std::string model_path, int local_rank,
 
 
 /* MRD I copied this from play.cpp but added the MC_chances parameter and the few lines that use it*/
-int play_game(Engine* e, std::vector<MonteCarlo*> players, int* num_moves, float **MC_chances, int* total_MC_chances, float *saved_values)
+int play_game(Engine* e, std::vector<MonteCarlo*> players, int* num_moves, float **MC_chances, int* total_MC_chances, float *saved_values, bool print_on)
 {
     int move;
     int* move_list;
@@ -225,18 +228,14 @@ int play_game(Engine* e, std::vector<MonteCarlo*> players, int* num_moves, float
     num_moves[0] = 0;
     move_list = e->generate_black_moves();
 
-    e->print_char();
-
-    printf("ULTIMATE TEST\n");
+    if (print_on) e->print_char();
 
     while(e->is_not_terminal(move_list, BLACK))
     {
-        printf("WHAT\n");
         move = players[BLACK]->move(move_list);
-        printf("WHAT2\n");
         e->push_black_move(move);
-        printf("move number %i\n", num_moves[0]);
-        e->print_char();
+        if (print_on) printf("move number %i\n", num_moves[0]);
+        if (print_on) e->print_char();
         
         MC_chances[num_moves[0]] = (float *) calloc(64, sizeof(float));
         total_MC_chances[0]++;
@@ -254,8 +253,8 @@ int play_game(Engine* e, std::vector<MonteCarlo*> players, int* num_moves, float
         }
         move = players[WHITE]->move(move_list);
         e->push_white_move(move);
-        printf("move number %i\n", num_moves[0]);
-        e->print_char();
+        if (print_on) printf("move number %i\n", num_moves[0]);
+        if (print_on) e->print_char();
         MC_chances[num_moves[0]] = (float *) calloc(64, sizeof(float));
         MCc = players[WHITE]->get_saved_q();
         for (int i = 0; i < 64; ++i) 
@@ -277,7 +276,7 @@ int main(int argc, char * argv[])
     int local_rank = -1; 
     int games_per_proc = -1;
     bool print_on = true;
-    int iterations_per_move = 100;
+    int iterations_per_move = 10;
 
 
     for (int i = 0; i < argc; ++i)
@@ -358,24 +357,22 @@ int main(int argc, char * argv[])
     // Loop over the number of games we're playing per processor per model
     for (int i = 0; i < games_per_proc; ++i)
     {
+        total_MC_chances[0] = 0;
         if(print_on) std::cout << "Playing game " << i + games_per_proc * local_rank << " on processor: " << local_rank << std::endl;
         float **MC_chances = (float **) calloc(e->get_max_move_length(), sizeof(float *));
         float *saved_values = (float *) calloc(e->get_max_move_length(), sizeof(float));
         // result holds 0 for black win, 1 for white win, and 2 for draw
-        int result = play_game(e, players, num_moves, MC_chances, total_MC_chances, saved_values);
+        int result = play_game(e, players, num_moves, MC_chances, total_MC_chances, saved_values, print_on);
         if(print_on) std::cout << "Processor: " << local_rank << " finished playing game, saving data now to path: " << model_path << std::endl;
         // save the game's info.
         save_game_info(model_path, local_rank, i, e, num_moves[0], result, MC_chances, saved_values);
         if(print_on) std::cout << "Processor: " << local_rank << " finished saving data, resetting engine now." << std::endl;
-
-        printf("BEFORE FOR LOOP FREES\n");
 
         // free and reset the engine for a new game
         for(int j = 0; j < total_MC_chances[0]; j++)
         {
             free(MC_chances[j]);
         }
-        printf("AFTER FOR LOOP FREES\n");
         free(MC_chances);
         free(saved_values);
         e->reset_engine();
@@ -396,8 +393,12 @@ int main(int argc, char * argv[])
     wait1_time_result = cast_nano2(wait1_end_timer - wait1_start_timer);
 
 
+    if (print_on) printf("Finished timing, now saving timer info\n");
+
     /*~*~*~ Possibly save all of the timer information ~*~*~*/
-    save_timer_info(model_name, local_rank, game_time_result, wait1_time_result);
+    save_timer_info(model_path, local_rank, game_time_result, wait1_time_result);
+
+    if (print_on) printf("Cleaning up engine and players\n");
 
     // clean up
     players[BLACK]->cleanup();
@@ -410,6 +411,8 @@ int main(int argc, char * argv[])
     e->clean_up();
     delete(e);
     free(num_moves);
+
+    if (print_on) printf("param_serial has finished\n");
 
     return 0;
 }

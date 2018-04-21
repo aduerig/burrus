@@ -358,10 +358,11 @@ def train():
         # No data exists, save random weights to be used in datagen
         if old_model_dir == None:
             os.mkdir(new_model_dir)
+            os.mkdir(os.path.join(new_model_dir, 'games'))
             print(new_model_dir)
             saver.save(sess, os.path.join(new_model_dir, 'model.ckpt'))
             return 1
-        train_batch_gen= get_data(GLOBAL_BATCH_SIZE, old_model_dir)
+        train_batch_gen = get_data(GLOBAL_BATCH_SIZE, old_model_dir)
 
 
         for i in range(GLOBAL_TRAINING_STEPS):
@@ -387,6 +388,7 @@ def train():
                 pass
 
         os.mkdir(new_model_dir)
+        os.mkdir(os.path.join(new_model_dir, 'games'))
         saver.save(sess, os.path.join(new_model_dir, 'mdel.ckpt'))
     return 1
 

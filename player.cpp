@@ -463,13 +463,10 @@ int MonteCarlo::move(int* move_list)
 
     if(print_on) printf("deleting all nodes saved\n");
 
-    printf("DELETING ALL NODES SAVED\n");
-
     for (std::pair<U64, Node*> element : node_storage)
     {
         free(element.second);
     }
-    printf("DELETING ALL NODES ENDED\n");
     node_storage.clear();
 
     return best_node->move; // returns best immediate child node
