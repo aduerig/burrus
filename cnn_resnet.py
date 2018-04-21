@@ -14,6 +14,8 @@ GLOBAL_LEARNING_RATE = .2
 GLOBAL_TRAINING_STEPS = 1000
 GLOBAL_BATCH_SIZE = 64
 
+MODELS_DIRECTORY = 'data'
+
 
 # may be training weirdness:
 # extra_update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)

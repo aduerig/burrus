@@ -31,7 +31,7 @@ Calls the hi_mpi_script.sh and cnn_train.sh over and over again performing the f
 ### engine.hpp + engine.cpp
 The engine for the othello game. Handles playing moves, finding legal moves, and tracking the board state.
 
-### player.hpp player.cpp
+### player.hpp + player.cpp
 Definitions for types of players.
 
 ### driver.cpp
