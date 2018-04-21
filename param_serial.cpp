@@ -276,7 +276,7 @@ int main(int argc, char * argv[])
     int local_rank = -1; 
     int games_per_proc = -1;
     bool print_on = true;
-    int iterations_per_move = 10;
+    int iterations_per_move = 3;
 
 
     for (int i = 0; i < argc; ++i)
