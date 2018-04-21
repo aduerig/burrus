@@ -506,6 +506,7 @@ void Engine::print_char()
         std::cout << std::endl;
     }
     std::cout << "  A B C D E F G H" << std::endl;
+    free(b);
 }
 
 // East << 1

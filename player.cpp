@@ -440,6 +440,13 @@ int MonteCarlo::move(int* move_list)
     // if(print_on) print_best_graph(root);
     if(print_on) print_all_subnodes(root);
 
+    if(print_on) printf("deleting all nodes saved\n");
+
+    for (std::pair<U64, Node*> element : node_storage)
+    {
+        free(element.second);
+    }
+
     return best_node->move; // returns best immediate child node
 }
 
@@ -450,7 +457,8 @@ Node* MonteCarlo::traverse_tree(Node* node, int p_color)
     while(node->expanded)
     {
         Node* new_node = max_child_puct(node);
-        push_move_wrapper(new_node->move, p_color);
+        push_move_wrapper(new_node->move, 
+                    p_color);
         node = new_node;
         p_color = 1 - p_color;
     }
@@ -500,6 +508,7 @@ void MonteCarlo::expand_node(Node* node, int* move_list)
         new_node->color = 1 - node->color;
         new_node->parent_node = node;
         new_node->is_pass = true;
+        new_node->move = -1;
         new_node->policy = 1;
         node_storage.insert({new_node->board_hash, new_node});
         
