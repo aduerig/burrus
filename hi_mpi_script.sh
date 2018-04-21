@@ -30,8 +30,8 @@ module load tensorflow/1.5_gpu
 
 while :
 do
+python cnn_resnet.py
 sleep 1
 mpiexec -n 8 ./hi_mpi -ngames 10000
 sleep 1
-python cnn_resnet.py
 done

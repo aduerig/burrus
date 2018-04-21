@@ -14,6 +14,7 @@ GLOBAL_LEARNING_RATE = .2
 GLOBAL_TRAINING_STEPS = 1000
 GLOBAL_BATCH_SIZE = 64
 
+MODELS_DIRECTORY = 'data' 
 
 # may be training weirdness:
 # extra_update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
@@ -401,7 +402,7 @@ def concat_files():
     model_count = len(next(os.walk(MODELS_DIRECTORY))[1])-1
     latest_model_path = 'model_' + str(model_count)
     path = os.path.join(MODELS_DIRECTORY, latest_model_path, 'games')
-    if not os.path.isdir(path):
+    if not os.path.isdir(MODELS_DIRECTORY) or os.path.isdir(path):
         return
     if os.path.exists(os.path.join(path, out_filename)):
         return
