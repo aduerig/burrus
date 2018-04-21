@@ -12,6 +12,12 @@ To run interactively (not with a job script):
 
 Warning, if "module purge" is run, then "module load slurm/default psc_path/1.1" must be run to interact with the GPU.
 
+If you encounter an error that tensorflow session is unable to be created, it means that your GPU memory is full.
+
+Run "nvidia-smi" to check on gpu memory usage.
+
+If you encounter the error: "Check failed: stream->parent()->GetConvolveAlgorithms( conv_parameters.ShouldIncludeWinogradNonfusedAlgo<T>(), &algorithms)", then delete the .nv folder from your home directory
+
 ## Description of files
 
 ### cnn_resnet.py
