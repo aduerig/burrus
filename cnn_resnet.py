@@ -10,7 +10,6 @@ import random
 
 # tf.logging.set_verbosity(tf.logging.INFO)
 
-
 GLOBAL_LEARNING_RATE = .2
 GLOBAL_TRAINING_STEPS = 100
 GLOBAL_BATCH_SIZE = 64
@@ -267,6 +266,9 @@ def read_in_games(filename):
     boards = []
     evals = []
     results = []
+    if not os.path.exists(filename):
+        print("couldn't find games for path: " + filename)
+        return boards, evals, results
     with open(filename, "r") as f:
         while True:
             move_count = f.readline()
