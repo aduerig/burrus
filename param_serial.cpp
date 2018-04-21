@@ -87,7 +87,7 @@ void save_game_info(std::string model_path, int local_rank, int game_number, Eng
 {
     // Filename: ${model_path}/games/${local_rank}_${game_number}.game
     FILE *fp;
-    char *fnm = (char *) calloc(50,sizeof(char));
+    char *fnm = (char *) calloc(50, sizeof(char));
     sprintf(fnm, "%s/games/%d_%d.game", model_path.c_str(), local_rank, game_number);
     fp = fopen(fnm, "w");
 
@@ -100,26 +100,26 @@ void save_game_info(std::string model_path, int local_rank, int game_number, Eng
         // Save Pieces of other player (U64)
         if (i % 2 == 0) // Black plays when num_moves is even. Save black first, then white.
         { 
-            fprintf(fp,"%llu\n%llu\n",(unsigned long long)e->pos.black_board,(unsigned long long)e->pos.white_board);
+            fprintf(fp,"%llu\n%llu\n", (unsigned long long)e->pos.black_board, (unsigned long long)e->pos.white_board);
         }
         else // White plays when num_moves is odd. Save white first, then black.
         {
-            fprintf(fp,"%llu\n%llu\n",e->pos.white_board,e->pos.black_board);
+            fprintf(fp,"%llu\n%llu\n", e->pos.white_board, e->pos.black_board);
         }
 
         // Save monte carlo search results (64 x 32 bit floats)
         for (int j = 0; j < 64; ++j)
         {
-            fprintf(fp,"%g\n", MC_chances[i][j]); // MC chances for move i square j
+            fprintf(fp, "%g\n", MC_chances[i][j]); // MC chances for move i square j
         }
        
         // save the saved value 
-        fprintf(fp,"%f\n",saved_values[i]);
+        fprintf(fp, "%f\n", saved_values[i]);
 
         // Save if current player won (1 x Int)
         // i % 2 == 0 for black. result is 0 for black win.
         // i % 2 == 1 for white. result is 1 for white win.
-        fprintf(fp,"%d\n",(result == 2 ? 2 : ((i % 2) == result)));
+        fprintf(fp, "%d\n", (result == 2 ? 2 : ((i % 2) == result)));
         
     }
 
@@ -153,11 +153,13 @@ void save_game_info(std::string model_path, int local_rank, int game_number, Eng
  */
 void read_game_info(std::string game_path, int *n_moves, U64 *player_boards, U64 *opponent_boards, float **MCvals, int *result, float *saved_values)
 {
+    // dummy holder
+    char* dummy_return;
     // Open file
     FILE *fp = fopen(game_path.c_str(),"r");
     // Read number of moves
-    char *buf = (char *) calloc(30,sizeof(char));
-    fgets(buf,30,fp);
+    char *buf = (char *) calloc(30, sizeof(char));
+    dummy_return = fgets(buf, 30, fp);
     *n_moves = atoi(buf);
     // Allocate memory
     player_boards = (U64 *) calloc(n_moves[0], sizeof(U64)); 
@@ -169,25 +171,25 @@ void read_game_info(std::string game_path, int *n_moves, U64 *player_boards, U64
     for (int i = n_moves[0]-1;i >= 0; --i)
     {
         // Read player board
-        fgets(buf,30,fp);
+        dummy_return = fgets(buf,30,fp);
         // Turn a string rep of U64 into a U64 rep and store in player_boards[i]
-        sscanf(buf,"%llu",&(player_boards[i]));
+        sscanf(buf, "%llu", &(player_boards[i]));
         // Read opponent board
-        fgets(buf,30,fp);
+        dummy_return = fgets(buf, 30, fp);
         // Turn a string rep of U64 into a U64 rep and store in opponent_boards[i]
-        sscanf(buf,"%llu",&(opponent_boards[i]));
+        sscanf(buf, "%llu", &(opponent_boards[i]));
         // Read 64 previous MC search results
-        MCvals[i] = (float *) calloc(64,sizeof(float));
+        MCvals[i] = (float *) calloc(64, sizeof(float));
         for (int j = 0; j < 64; ++j)
         {
-            fgets(buf, 30, fp);
+            dummy_return = fgets(buf, 30, fp);
             MCvals[i][j] = atof(buf);
         }    
         // Read saved value
-        fgets(buf,30,fp);
+        dummy_return = fgets(buf, 30, fp);
         saved_values[i] = atof(buf);
         // Read winner 
-        fgets(buf,30,fp);
+        dummy_return = fgets(buf, 30, fp);
         result[i] = atoi(buf);
     }
     // Close file
@@ -214,7 +216,7 @@ void save_timer_info(std::string model_path, int local_rank,
 
 
 /* MRD I copied this from play.cpp but added the MC_chances parameter and the few lines that use it*/
-int play_game(Engine* e, std::vector<MonteCarlo*> players, int* num_moves, float **MC_chances, float *saved_values)
+int play_game(Engine* e, std::vector<MonteCarlo*> players, int* num_moves, float **MC_chances, int* total_MC_chances, float *saved_values)
 {
     int move;
     int* move_list;
@@ -231,7 +233,8 @@ int play_game(Engine* e, std::vector<MonteCarlo*> players, int* num_moves, float
         printf("move number %i\n", num_moves[0]);
         e->print_char();
         
-        MC_chances[num_moves[0]] = (float *) calloc(64,sizeof(float));
+        MC_chances[num_moves[0]] = (float *) calloc(64, sizeof(float));
+        total_MC_chances[0]++;
         MCc = players[BLACK]->get_saved_q(); // When players was std::vector<Players *>, this errors
         for (int i = 0; i < 64; ++i) 
         { 
@@ -248,7 +251,7 @@ int play_game(Engine* e, std::vector<MonteCarlo*> players, int* num_moves, float
         e->push_white_move(move);
         printf("move number %i\n", num_moves[0]);
         e->print_char();
-        MC_chances[num_moves[0]] = (float *) calloc(64,sizeof(float));
+        MC_chances[num_moves[0]] = (float *) calloc(64, sizeof(float));
         MCc = players[WHITE]->get_saved_q();
         for (int i = 0; i < 64; ++i) 
         { 
@@ -340,8 +343,8 @@ int main(int argc, char * argv[])
     players.push_back(new MonteCarlo(WHITE, e, model_name, iterations_per_move, true)); // white
      
     // Variable for the number of moves in the game
-    int *num_moves = (int *) calloc(1, sizeof(int));
-
+    int* num_moves = (int*) calloc(1, sizeof(int));
+    int* total_MC_chances = (int*) calloc(1, sizeof(int));
         
     /*~*~*~*~*~ Possibly decrement a game timer here ~*~*~*~*~*/
     game_start_timer = std::chrono::system_clock::now();
@@ -352,12 +355,17 @@ int main(int argc, char * argv[])
         float **MC_chances = (float **) calloc(e->get_max_move_length(), sizeof(float *));
         float *saved_values = (float *) calloc(e->get_max_move_length(), sizeof(float));
         // result holds 0 for black win, 1 for white win, and 2 for draw
-        int result = play_game(e, players, num_moves, MC_chances, saved_values);
+        int result = play_game(e, players, num_moves, MC_chances, total_MC_chances, saved_values);
         if(print_on) std::cout << "Processor: " << local_rank << " finished playing game, saving data now to path: " << model_path << std::endl;
         // save the game's info.
         save_game_info(model_path, local_rank, i, e, num_moves[0], result, MC_chances, saved_values);
         if(print_on) std::cout << "Processor: " << local_rank << " finished saving data, resetting engine now." << std::endl;
-        // free and eset the engine for a new game
+        
+        // free and reset the engine for a new game
+        for(int j = 0; j < total_MC_chances[0]; j++)
+        {
+            free(MC_chances[j]);
+        }
         free(MC_chances);
         free(saved_values);
         e->reset_engine();
