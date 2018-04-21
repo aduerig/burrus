@@ -463,10 +463,13 @@ int MonteCarlo::move(int* move_list)
 
     if(print_on) printf("deleting all nodes saved\n");
 
+    printf("DELETING ALL NODES SAVED\n");
+
     for (std::pair<U64, Node*> element : node_storage)
     {
         free(element.second);
     }
+    printf("DELETING ALL NODES ENDED\n");
     node_storage.clear();
 
     return best_node->move; // returns best immediate child node
@@ -552,6 +555,14 @@ void MonteCarlo::expand_node(Node* node, int* move_list)
     // TEMP
 
     node->children_nodes = (Node*) malloc(move_list[0] * sizeof(Node));
+
+
+    //////////////// THIS CODE KINDA MAKES NO SENSE FOR NODE STORAGE, JUST A FIX FOR FREEING
+    node_storage.insert({node_storage_counter, node->children_nodes});
+    node_storage_counter++;
+    ////////////////    
+
+
     node->num_children = move_list[0];
     for(int i = 0; i < move_list[0]; i++)
     {
@@ -568,8 +579,6 @@ void MonteCarlo::expand_node(Node* node, int* move_list)
         // CHECK IF move_list[i+1] IS THE PROPER INDEX
         new_node->policy = float_arr_reciever[move_list[i+1]]; // need network to run before this
         // node_storage.insert({new_node->board_hash, new_node});
-        node_storage.insert({node_storage_counter, new_node});
-        node_storage_counter++;
         e->pop_move();
     }
     node->expanded = true;

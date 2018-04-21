@@ -114,10 +114,12 @@ def serve_requests(memory, semaphore, mapfile, MODEL_NAME, write_file):
         graph = tf.get_default_graph()
 
         x_tensor = graph.get_tensor_by_name('x:0')
+        train_bool = graph.get_tensor_by_name('train_bool:0')
         value_head_output = graph.get_tensor_by_name('value_head_output:0')
         policy_head_output = graph.get_tensor_by_name('policy_head_output/BiasAdd:0')
 
-
+        sess.run(tf.global_variables_initializer())
+        
         requests_served = 0
         while True: # serving loop
             s = "Request number: {0}\n".format(requests_served)
@@ -136,7 +138,7 @@ def serve_requests(memory, semaphore, mapfile, MODEL_NAME, write_file):
 
             ###### PROCESS DATA VIA FORWARD PASS
             x_data = [inters]
-            res = sess.run([policy_head_output, value_head_output], feed_dict={x_tensor: x_data})
+            res = sess.run([policy_head_output, value_head_output], feed_dict={x_tensor: x_data, train_bool: False})
             policy_calced = res[0][0]
             value_calced = res[1][0]
             together = np.append(policy_calced, value_calced)

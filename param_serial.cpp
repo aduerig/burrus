@@ -153,6 +153,7 @@ void save_game_info(std::string model_path, int local_rank, int game_number, Eng
  */
 void read_game_info(std::string game_path, int *n_moves, U64 *player_boards, U64 *opponent_boards, float **MCvals, int *result, float *saved_values)
 {
+
     // dummy holder
     char* dummy_return;
     // Open file
@@ -226,9 +227,13 @@ int play_game(Engine* e, std::vector<MonteCarlo*> players, int* num_moves, float
 
     e->print_char();
 
+    printf("ULTIMATE TEST\n");
+
     while(e->is_not_terminal(move_list, BLACK))
     {
+        printf("WHAT\n");
         move = players[BLACK]->move(move_list);
+        printf("WHAT2\n");
         e->push_black_move(move);
         printf("move number %i\n", num_moves[0]);
         e->print_char();
@@ -267,6 +272,8 @@ int play_game(Engine* e, std::vector<MonteCarlo*> players, int* num_moves, float
 
 int main(int argc, char * argv[])
 {
+    srand(time(NULL)); // seed rand
+
     int local_rank = -1; 
     int games_per_proc = -1;
     bool print_on = true;
@@ -360,12 +367,15 @@ int main(int argc, char * argv[])
         // save the game's info.
         save_game_info(model_path, local_rank, i, e, num_moves[0], result, MC_chances, saved_values);
         if(print_on) std::cout << "Processor: " << local_rank << " finished saving data, resetting engine now." << std::endl;
-        
+
+        printf("BEFORE FOR LOOP FREES\n");
+
         // free and reset the engine for a new game
         for(int j = 0; j < total_MC_chances[0]; j++)
         {
             free(MC_chances[j]);
         }
+        printf("AFTER FOR LOOP FREES\n");
         free(MC_chances);
         free(saved_values);
         e->reset_engine();
