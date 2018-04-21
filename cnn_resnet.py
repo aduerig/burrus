@@ -6,6 +6,7 @@ import numpy as np
 import tensorflow as tf
 
 import os
+import random
 
 tf.logging.set_verbosity(tf.logging.INFO)
 
@@ -142,6 +143,7 @@ def create_value_head(x, train_bool):
     # relu
     first_relu = tf.nn.relu(conv_bn_layer, name='value_head_relu1')
 
+
     flattened_value = tf.reshape(first_relu, [-1, 8*8])
 
     hidden_layer = tf.layers.dense(inputs=flattened_value, units = 256, name='value_head_dense_to_dense') # only 64 possible moves, no activation
@@ -189,20 +191,30 @@ def create_policy_head(x, train_bool):
 # generators will loop forever if batch_size > samples, also it has the chance to miss a
 # few samples each iteration, though they all have equal probability, so it shouldnt matter
 def get_inf_batch_gens(data, size):
-    np.random.shuffle(data)
-    sample_length = data.shape[0]
+    rng_state = np.random.get_state()
+    np.random.shuffle(data[0])
+    np.random.set_state(rng_state)
+    np.random.shuffle(data[1])
+    np.random.set_state(rng_state)
+    np.random.shuffle(data[2])
+    sample_length = len(data[0])
     curr = sample_length
     loop = 0
     while True:
         if curr+size > sample_length:
             curr = 0
-            np.random.shuffle(data)
+            rng_state = np.random.get_state()
+            np.random.shuffle(data[0])
+            np.random.set_state(rng_state)
+            np.random.shuffle(data[1])
+            np.random.set_state(rng_state)
+            np.random.shuffle(data[2])
             loop += 1
             print('looping training data for the {0} time'.format(loop))
             continue
-        x = data[curr:curr+size, 0]
-        y_real = data[curr:curr+size, 1]
-        y_imag = data[curr:curr+size, 2]
+        x = data[0][curr:curr+size]
+        y_real = data[1][curr:curr+size]
+        y_imag = data[2][curr:curr+size]
         curr += size
         yield x, y_real, y_imag
 
@@ -210,7 +222,7 @@ def get_inf_batch_gens(data, size):
 def get_model_directories():
     # get newest model directory
     data_dir_name = 'data'
-    data_dir = os.path.abspath(os.path.join(os.getcwd(), os.pardir, data_dir_name))
+    data_dir = os.path.abspath(os.path.join(os.getcwd(), data_dir_name))
     
     # ensure data_dir exists
     if not os.path.isdir(data_dir):
@@ -228,52 +240,53 @@ def get_model_directories():
 
 
 def get_data(size, old_model_dir):
-    # open data
-    x_path = os.path.join(old_model_dir, 'board_positions.dat')
-    y_policy_labels_path = os.path.join(old_model_dir, 'y_policy_labels.dat')
-    y_true_value_path = os.path.join(old_model_dir, 'y_true_value.dat')
 
-    x = np.loadtxt(open(x_path, 'r'), delimiter=',')
-    y_policy_labels = np.loadtxt(open(y_policy_labels_path, 'r'), delimiter=',')
-    y_true_value = np.loadtxt(open(y_true_value_path, 'r'), delimiter=',')
-    
-    # splits data into train/test, probably not needed for real training but for test purposes
-    # possible these ar eshallow copies, check
-    tt_split = x.shape[0] * .9
+    x_train = []
+    y_policy_labels = []
+    y_true_value = []
+    model_count = len(next(os.walk('data'))[1])
+    game_locs = []
 
-    x_train = x[:tt_split]
-    y_policy_labels_train = y_policy_labels[:tt_split]
-    y_true_value_train = y_true_value[:tt_split]
+    for i in range(model_count):
+        curr_path = os.path.join('data', 'model_' + str(i), 'games', 'all_games.game')
+        x,y,z = read_in_games(curr_path)
+        x_train += x
+        y_policy_labels += y
+        y_true_value += z
 
-    x_test = x[tt_split:]
-    y_policy_labels_test = y_policy_labels[tt_split:]
-    y_true_value_test = y_true_value[tt_split:]
+    x_train = np.array(x_train)
+    y_policy_labels = np.array(y_policy_labels)
+    y_true_value = np.array(y_true_value)
 
-    # combining all training data in order to make it easier to shuffle
-    all_train = np.empty(shape=[3, x_train.shape[0], x_train.shape[1]], 
-            dtype=x_train.dtype)
-    all_train[0] = x_train
-    all_train[1] = y_policy_labels_train
-    all_train[2] = y_true_value_train
-    all_train = all_train.swapaxes(0, 1)
-    print('Number of training examples', all_train.shape[0])
+    train = [x_train, y_policy_labels, y_true_value]
+    return get_inf_batch_gens(train, size)
 
-    # combining all testing data in order to make it easier to shuffle
-    all_test = np.empty(shape=[3, x_test.shape[0], x_test.shape[1]], 
-            dtype=x_test.dtype)
-    all_test[0] = x_test
-    all_test[1] = y_policy_labels_test
-    all_test[2] = y_true_value_test
-    all_test = all_test.swapaxes(0, 1)
-    print('Number of test examples', all_test.shape[0])
-
-    assert(all_train.shape[0] >= size)
-    assert(all_test.shape[0] >= size)
-    return get_inf_batch_gens(all_train, size), get_inf_batch_gens(all_test, size)
-
+def bitfield(n):
+    return [n >> i & 1 for i in range(63,-1,-1)]
+def read_in_games(filename):
+    boards = []
+    evals = []
+    results = []
+    with open(filename, "r") as f:
+        while True:
+            move_count = f.readline()
+            if not move_count:
+                break
+            for i in range(int(move_count)):
+                board1 = bitfield(int(f.readline()))
+                board2 = bitfield(int(f.readline()))
+                boards.append(board1+board2)
+                arr = []
+                for _j in range(64):
+                    arr.append(float(f.readline()))
+                evals.append(arr)
+                #skip saved values for now
+                f.readline()
+                results.append([int(f.readline())])
+    return boards, evals, results
 
 # returns 1 when successful
-def main():
+def train():
     x = tf.placeholder(tf.float32, shape=(None, 128), name='x')
     y_policy_labels = tf.placeholder(tf.float32, shape=(None, 64), name='y_policy_labels')
     y_true_value = tf.placeholder(tf.float32, shape=(None, 1), name='y_true_value')
@@ -343,7 +356,7 @@ def main():
             saver.save(sess, os.path.join(new_model_dir, 'model.ckpt'))
             return 1
 
-        train_batch_gen, test_batch_gen = get_data(GLOBAL_BATCH_SIZE, old_model_dir)
+        train_batch_gen= get_data(GLOBAL_BATCH_SIZE, old_model_dir)
 
 
         for i in range(GLOBAL_TRAINING_STEPS):
@@ -355,7 +368,7 @@ def main():
                 a_p = accuracy_policy.eval(feed_dict={
                         x: curr_batch_x, y_policy_labels: curr_batch_y_policy_labels})
                 a_v = accuracy_policy.eval(feed_dict={
-                        x: curr_batch_x, y_true_value: curr_batch_y_true_value})
+                        x: curr_batch_x, y_policy_labels: curr_batch_y_policy_labels})
                 print('step {0}, training accuracy_policy {1}, training accuracy_value {1}'.format(i, 
                             a_p, a_v))
             sess.run([train_step, extra_update_ops], feed_dict={x: curr_batch_x, 
@@ -365,17 +378,12 @@ def main():
             if i % 20000:
                 pass
 
-        curr_batch_holder = next(test_batch_gen)
-        a_p = accuracy_policy.eval(feed_dict={
-                x: curr_batch_x, y_policy_labels: curr_batch_y_policy_labels})
-        a_v = accuracy_policy.eval(feed_dict={
-                x: curr_batch_x, y_true_value: curr_batch_y_true_value})
-        print('step {0}, testing accuracy_policy {1}, testing accuracy_value {1}'.format(i, 
-                    a_p, a_v))
     os.mkdir(new_model_dir)
     saver.save(sess, os.path.join(new_model_dir, '/mdel.ckpt'))
     return 1
 
+def main():
+    train()
 
 if __name__ == "__main__":
     main()
