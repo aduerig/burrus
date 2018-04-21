@@ -98,7 +98,10 @@ def ensure_logging_directory():
     # ensure data_dir exists
     if not os.path.isdir(log_dir):
         print('MODEL: making log directory at {0}', log_dir)
-        os.mkdir(log_dir)
+        try:
+            os.mkdir(log_dir)
+        except OSError as exc:
+            pass
 
 
 def serve_requests(memory, semaphore, mapfile, MODEL_NAME, write_file):
