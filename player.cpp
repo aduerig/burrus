@@ -365,7 +365,7 @@ MonteCarlo::MonteCarlo(int col, Engine* engine, std::string m_path, int sims, bo
 {
     model_path = m_path;
 
-    
+
     // asigning values to struct
     params.semaphore_name = gen_random(10);
     params.shared_memory_name = gen_random(10);
@@ -1109,12 +1109,22 @@ void MonteCarlo::print_all_subnodes_helper(Node* node, int depth)
 // always will be 64 in length
 float* MonteCarlo::get_saved_q()
 {
+    if(!is_training)
+    {
+        printf("Cannot call get_saved_q() if the montecarlo player was not instaniated with training on! Exiting...\n");
+        exit(0);
+    }
     return saved_q;
 }
 
 // the value return
 float MonteCarlo::get_saved_value()
 {
+    if(!is_training)
+    {
+        printf("Cannot call get_saved_value() if the montecarlo player was not instaniated with training on! Exiting...\n");
+        exit(0);
+    }
     return saved_value;
 }
 
