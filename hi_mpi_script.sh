@@ -1,4 +1,5 @@
 #!/bin/bash -l
+#SBATCH -W
 #SBATCH -N 1
 #SBATCH -n 8
 #SBATCH -t 0:10:00

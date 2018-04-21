@@ -18,11 +18,11 @@ def main():
     while 1:
         concat_files()
         print('calling cnn.train()')
-        cnn_train = subprocess.call('srun cnn_train.sh', shell=True)
+        cnn_train = subprocess.call('sbatch cnn_train.sh', shell=True)
 
 
         print('calling hi_mpi')
-        hi_mpi = subprocess.call('srun hi_mpi_script.sh', shell=True)
+        hi_mpi = subprocess.call('sbatch hi_mpi_script.sh', shell=True)
 
 
 
