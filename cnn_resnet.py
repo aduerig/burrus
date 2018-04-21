@@ -262,6 +262,7 @@ def get_data(size, old_model_dir):
 
 def bitfield(n):
     return [n >> i & 1 for i in range(63,-1,-1)]
+
 def read_in_games(filename):
     boards = []
     evals = []
@@ -290,20 +291,21 @@ def read_in_games(filename):
 # returns 1 when successful
 def train():
     x = tf.placeholder(tf.float32, shape=(None, 128), name='x')
+    train_bool = tf.placeholder(tf.bool, name='train_bool')
     y_policy_labels = tf.placeholder(tf.float32, shape=(None, 64), name='y_policy_labels')
     y_true_value = tf.placeholder(tf.float32, shape=(None, 1), name='y_true_value')
 
-    conv_block = cnn_block(x, True, 0)
+    conv_block = cnn_block(x, train_bool, 0)
 
     # stacking 10 residual blocks
     resid_input = conv_block
     for i in range(0, 10):
-        resid_input = resid_block(resid_input, True, i)
+        resid_input = resid_block(resid_input, train_bool, i)
     resid_final = resid_input
 
     # get policy and value head
-    value_head = create_value_head(resid_final, True)
-    policy_head = create_policy_head(resid_final, True)
+    value_head = create_value_head(resid_final, train_bool)
+    policy_head = create_policy_head(resid_final, train_bool)
 
 
     # logits and labels must have the same shape, e.g. [batch_size, num_classes] and the same dtype (either float16, float32, or float64).
@@ -368,14 +370,17 @@ def train():
             curr_batch_y_true_value = curr_batch_holder[2]
             if i % 100 == 0:
                 a_p = accuracy_policy.eval(feed_dict={
-                        x: curr_batch_x, y_policy_labels: curr_batch_y_policy_labels})
+                        x: curr_batch_x, y_policy_labels: curr_batch_y_policy_labels,
+                            train_bool: True})
                 a_v = accuracy_policy.eval(feed_dict={
-                        x: curr_batch_x, y_policy_labels: curr_batch_y_policy_labels})
+                        x: curr_batch_x, y_policy_labels: curr_batch_y_policy_labels,
+                            train_bool: True})
                 print('step {0}, training accuracy_policy {1}, training accuracy_value {1}'.format(i, 
                             a_p, a_v))
             sess.run([train_step, extra_update_ops], feed_dict={x: curr_batch_x, 
                             y_policy_labels: curr_batch_y_policy_labels, 
-                            y_true_value: curr_batch_y_true_value})
+                            y_true_value: curr_batch_y_true_value,
+                            train_bool: True})
 
             if i % 20000:
                 pass
