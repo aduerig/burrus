@@ -40,6 +40,7 @@ int Player::get_color()
     return this->color;
 }
 
+
 //
 // RAND
 //
@@ -60,6 +61,11 @@ int Rand::move(int* move_list)
     move_list++;
 
     return move_list[move_choice];
+}
+
+void Rand::cleanup()
+{
+    //
 }
 
 //
@@ -142,6 +148,11 @@ int Human::move(int* move_list)
     }
 
     return chosen_move;
+}
+
+void Human::cleanup()
+{
+    //
 }
 
 //
@@ -338,6 +349,11 @@ int Minimax::decode_terminal_score(int term)
     }
 }
 
+void Minimax::cleanup()
+{
+    //
+}
+
 
 //
 // MONTE CARLO
@@ -345,14 +361,15 @@ int Minimax::decode_terminal_score(int term)
 
 
 
-MonteCarlo::MonteCarlo(int col, Engine* engine, std::string m_path, bool training) : Player(col, engine)
+MonteCarlo::MonteCarlo(int col, Engine* engine, std::string m_path, int sims, bool training) : Player(col, engine)
 {
     model_path = m_path;
-    max_sims = 10;
+    max_sims = sims;
     curr_root = NULL;
     is_training = training;
     saved_q = (float*) malloc(64* sizeof(float));
-    print_on = true;
+    print_on = false;
+    explore_constant = 1;
 
     int ret_val = setup_python_communication();
     if(ret_val == 1)
@@ -384,6 +401,7 @@ int MonteCarlo::move(int* move_list)
     root->color = color;
     root->board_hash = e->hash_board();
     node_storage.insert({root->board_hash, root});
+
     expand_node(root, move_list);
 
     curr_root = root;
@@ -587,6 +605,7 @@ float MonteCarlo::compute_puct(Node* node)
 
 void MonteCarlo::cleanup()
 {
+    printf("begining MonteCarlo cleanup\n");
     int ret_val = destroy_communication();
     
     if(ret_val == 1)
@@ -599,6 +618,7 @@ void MonteCarlo::cleanup()
         printf("Setup python communication returned with error 2 (problems with shared memory) exiting.");
         exit(0);
     }
+    printf("finished MonteCarlo cleanup\n");
 }
 
 

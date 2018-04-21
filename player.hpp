@@ -38,6 +38,7 @@ class Player
         Player(int col, Engine *engine);
         int get_color();
         virtual int move(int* move_list)=0;
+        virtual void cleanup()=0;
 
 };
 
@@ -46,6 +47,7 @@ class Rand: public Player
     public:
         Rand(int col, Engine* engine);
         int move(int* move_list);
+        void cleanup();
 };
 
 class Human: public Player
@@ -54,6 +56,7 @@ class Human: public Player
         Human(int col, Engine* engine);
         int move(int* move_list);
         int parse_coords(std::string seq);
+        void cleanup();
 };
 
 class Minimax: public Player
@@ -65,6 +68,7 @@ class Minimax: public Player
         int move(int* move_list);
         int* copy_move_list(int* move_list);
         int decode_terminal_score(int term);
+        void cleanup();
 
     private:
         int depth_search_limit;
@@ -101,7 +105,7 @@ struct new_params
 class MonteCarlo: public Player
 {
     public:
-        MonteCarlo(int col, Engine* engine, std::string m_path, bool training);
+        MonteCarlo(int col, Engine* engine, std::string m_path, int sims, bool training);
         
         int move(int* move_list);
         Node* traverse_tree(Node* node, int p_color);
@@ -154,7 +158,7 @@ class MonteCarlo: public Player
         
         Node* curr_root;
         bool is_training;
-        float explore_constant = 1;
+        float explore_constant;
         float saved_value;
         float* saved_q;
         bool print_on;
