@@ -3,9 +3,6 @@ import sys
 import subprocess
 from optparse import OptionParser 
 
-import cnn_resnet as cnn
-
-
 # main script which:
 # 1) spawns players with hi_mpi
 # 2) on finish, concats data
@@ -15,12 +12,17 @@ MODELS_DIRECTORY = 'data'
 
 def main():
     # parser.add_option("-n", "--num_processors", dest="np", 
-    #                 help="Number of games", default = 10) 
-    print('calling hi_mpi')
-    #subprocess.call('mpirun -n 2 ./hi_mpi -ngames 200', shell=True)
+    #                 help="Number of games", default = 10)
 
-    concat_files() # path looks like 'data/model_0/games'
-    cnn.train()
+    #get the first job id
+    while 1:
+        concat_files()
+        print('calling cnn.train()')
+        cnn_train = subprocess.call('srun cnn_train.sh', shell=True)
+
+
+        print('calling hi_mpi')
+        hi_mpi = subprocess.call('srun hi_mpi_script.sh', shell=True)
 
 
 
