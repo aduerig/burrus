@@ -44,7 +44,7 @@ def cnn_block(x, train_bool, block_num):
     # conv
     conv_layer = tf.layers.conv2d(
             inputs=x,
-            filters=32, # orig is 256
+            filters=8, # orig is 256
             kernel_size=[3, 3], # orig is 3x3
             padding="same",
             activation=None,
@@ -71,7 +71,7 @@ def resid_block(x, train_bool, block_num):
     # conv
     conv_layer = tf.layers.conv2d(
             inputs=x,
-            filters=32, # orig is 256
+            filters=8, # orig is 256
             kernel_size=[3, 3], # orig is 3x3
             padding="same",
             activation=None,
@@ -94,7 +94,7 @@ def resid_block(x, train_bool, block_num):
     # conv2
     conv2_layer = tf.layers.conv2d(
             inputs=first_relu,
-            filters=32, # orig is 256
+            filters=8, # orig is 256
             kernel_size=[3, 3], # orig is 3x3
             padding="same",
             activation=None,
@@ -147,7 +147,7 @@ def create_value_head(x, train_bool):
 
     flattened_value = tf.reshape(first_relu, [-1, 8*8])
 
-    hidden_layer = tf.layers.dense(inputs=flattened_value, units = 64, name='value_head_dense_to_dense') # orig is 256
+    hidden_layer = tf.layers.dense(inputs=flattened_value, units = 16, name='value_head_dense_to_dense') # orig is 256
 
     final_relu = tf.nn.relu(hidden_layer, name='value_head_relu2')
 
@@ -302,7 +302,7 @@ def train():
 
     # stacking 10 residual blocks
     resid_input = conv_block
-    for i in range(0, 2): # paper is 20
+    for i in range(0, 1): # paper is 20
         resid_input = resid_block(resid_input, train_bool, i)
     resid_final = resid_input
 

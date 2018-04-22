@@ -371,7 +371,7 @@ MonteCarlo::MonteCarlo(int col, Engine* engine, std::string m_path, int sims, bo
     is_training = training;
     saved_q = (float*) malloc(64 * sizeof(float));
     print_on = false;
-    explore_constant = 10;
+    explore_constant = 1;
     node_storage_counter = 0;
 
     // data holders
@@ -500,7 +500,7 @@ int MonteCarlo::move(int* move_list)
     //     add_dirichlet_noise
     // }
 
-    float alpha = .4;
+    float alpha = .03;
     add_dirichlet_noise(0.25f, alpha);
 
     // printf("value of root%f\n", curr_root->value);
@@ -538,13 +538,17 @@ int MonteCarlo::move(int* move_list)
         saved_value = root->value;
     }
 
-    // printf("\nvisits\n");
-    // for(int i = 0; i < curr_root->num_children; i++)
-    // {
-    //     Node* child = curr_root->children_nodes + i;
-    //     printf("child %d, visits: %d, ", i, child->visits);
-    // }
-    // printf("\n");
+    printf("\nroot info\n");
+    printf("\nvisits: %d\ncalced_q: %f\npolicy: %f\nvalue: %f\ntotal_action_value: %f\n", curr_root->visits, curr_root->calced_q, curr_root->policy, curr_root->value, curr_root->total_action_value);
+
+
+    printf("\nchild info\n");
+    for(int i = 0; i < curr_root->num_children; i++)
+    {
+        Node* child = curr_root->children_nodes + i;
+        printf("\nchild %d\nvisits:             %d\ncalced_q:           %f\npolicy:             %f\nvalue:             %f\ntotal_action_value: %f\n", i, child->visits, child->calced_q, child->policy, child->value, child->total_action_value);
+    }
+    printf("\n");
 
     Node* best_node = max_child_visits(root);
 
