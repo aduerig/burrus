@@ -255,8 +255,8 @@ int Params::play_game(Engine* e, std::vector<MonteCarlo*> players, int* num_move
     {
         move = players[BLACK]->move(move_list);
         e->push_black_move(move);
-        if (print_on) printf("move number %i\n", num_moves[0]); // && num_moves[0] == 51
-        if (print_on) e->print_char();
+        if (print_on && num_moves[0] == 51) printf("move number %i\n", num_moves[0]); // && num_moves[0] == 51
+        if (print_on && num_moves[0] == 51) e->print_char();
         
         MC_chances[num_moves[0]] = (float *) calloc(64, sizeof(float));
         total_MC_chances[0]++;
@@ -269,7 +269,7 @@ int Params::play_game(Engine* e, std::vector<MonteCarlo*> players, int* num_move
         num_moves[0]++;
 
         //TEMP
-        std::cin.ignore( std::numeric_limits <std::streamsize> ::max(), '\n' );
+        // std::cin.ignore( std::numeric_limits <std::streamsize> ::max(), '\n' );
         //TEMP
 
         move_list = e->generate_white_moves();
@@ -279,8 +279,8 @@ int Params::play_game(Engine* e, std::vector<MonteCarlo*> players, int* num_move
         }
         move = players[WHITE]->move(move_list);
         e->push_white_move(move);
-        if (print_on) printf("move number %i\n", num_moves[0]);
-        if (print_on) e->print_char();
+        if (print_on && num_moves[0] == 51) printf("move number %i\n", num_moves[0]);
+        if (print_on && num_moves[0] == 51) e->print_char();
         MC_chances[num_moves[0]] = (float *) calloc(64, sizeof(float));
         MCc = players[WHITE]->get_saved_q();
         for (int i = 0; i < 64; ++i) 
@@ -291,8 +291,8 @@ int Params::play_game(Engine* e, std::vector<MonteCarlo*> players, int* num_move
         num_moves[0]++;
 
         // TEMP
-        std::cin.ignore( std::numeric_limits <std::streamsize> ::max(), '\n' );
-        //
+        // std::cin.ignore( std::numeric_limits <std::streamsize> ::max(), '\n' );
+        // TEMP
 
         move_list = e->generate_black_moves();
     }
@@ -525,7 +525,7 @@ void Params::run_params(int local_rank, int games_per_proc)
     srand(time(NULL)); // seed rand
 
     bool print_on = true;
-    int iterations_per_move = 300;
+    int iterations_per_move = 30;
 
 
     if (local_rank == -1)

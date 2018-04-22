@@ -491,6 +491,7 @@ int MonteCarlo::move(int* move_list)
 
     expand_node(root, move_list);
     curr_root = root;
+    curr_root->visits++;
 
     // ADD NOISE
     // if(is_training)
@@ -538,17 +539,17 @@ int MonteCarlo::move(int* move_list)
         saved_value = root->value;
     }
 
-    printf("\nroot info\n");
-    printf("\nvisits: %d\ncalced_q: %f\npolicy: %f\nvalue: %f\ntotal_action_value: %f\n", curr_root->visits, curr_root->calced_q, curr_root->policy, curr_root->value, curr_root->total_action_value);
+    // printf("\nroot info\n");
+    // printf("\nvisits: %d\ncalced_q: %f\npolicy: %f\nvalue: %f\ntotal_action_value: %f\n", curr_root->visits, curr_root->calced_q, curr_root->policy, curr_root->value, curr_root->total_action_value);
 
 
-    printf("\nchild info\n");
-    for(int i = 0; i < curr_root->num_children; i++)
-    {
-        Node* child = curr_root->children_nodes + i;
-        printf("\nchild %d\nvisits:             %d\ncalced_q:           %f\npolicy:             %f\nvalue:             %f\ntotal_action_value: %f\n", i, child->visits, child->calced_q, child->policy, child->value, child->total_action_value);
-    }
-    printf("\n");
+    // printf("\nchild info\n");
+    // for(int i = 0; i < curr_root->num_children; i++)
+    // {
+    //     Node* child = curr_root->children_nodes + i;
+    //     printf("\nchild %d\nvisits:             %d\ncalced_q:           %f\npolicy:             %f\nvalue:             %f\ntotal_action_value: %f\n", i, child->visits, child->calced_q, child->policy, child->value, child->total_action_value);
+    // }
+    // printf("\n");
 
     Node* best_node = max_child_visits(root);
 
@@ -582,6 +583,18 @@ Node* MonteCarlo::traverse_tree(Node* node, int p_color)
         node = new_node;
         p_color = 1 - p_color;
     }
+
+    // printf("\nchild info\n");
+    // for(int i = 0; i < curr_root->num_children; i++)
+    // {
+    //     Node* child = curr_root->children_nodes + i;
+    //     printf("\nchild %d\nvisits:             %d\ncalced_q:           %f\npolicy:             %f\nvalue:             %f\ntotal_action_value: %f\n", i, child->visits, child->calced_q, child->policy, child->value, child->total_action_value);
+    // }
+    // printf("\n");
+
+    // printf("landed on:\n");
+    // print_node_info(node);
+    // exit(0);
     if(print_on) printf("landed on:\n");
     if(print_on) print_node_info(node);
     return node;
@@ -686,17 +699,19 @@ void MonteCarlo::expand_node(Node* node, int* move_list)
 void MonteCarlo::backup_stats(Node* node)
 {
     float newer_value = node->value;
+    int inverter = -1;
     while(node != curr_root)
     {
         node->visits++;
-        node->total_action_value += newer_value;
+        node->total_action_value += (newer_value * inverter);
         node->calced_q = node->total_action_value / node->visits;
         node = node->parent_node;
         e->pop_move();
+        inverter = inverter * -1;
     }
 
     curr_root->visits++;
-    curr_root->total_action_value += newer_value;
+    curr_root->total_action_value += (newer_value * inverter);
     curr_root->calced_q = curr_root->total_action_value / curr_root->visits;
 }
 
@@ -705,10 +720,12 @@ void MonteCarlo::backup_stats(Node* node)
 Node* MonteCarlo::max_child_puct(Node* node)
 {
     Node* best_node = node->children_nodes;
-    int best_score = color_multiplier(node->color) * compute_puct(best_node);
+    // printf("child: %i, ", 0);
+    float best_score = compute_puct(best_node);
     for(int i = 1; i < node->num_children; i++)
     {
-        int temp_uct = color_multiplier(node->color) * compute_puct(node->children_nodes + i);
+        // printf("child: %i, ", 0);
+        float temp_uct = compute_puct(node->children_nodes + i);
         if(temp_uct > best_score)
         {
             best_node = node->children_nodes + i;
@@ -739,7 +756,8 @@ float MonteCarlo::compute_puct(Node* node)
     float u_val = explore_constant * node->policy * 
             sqrt(node->parent_node->visits);
     u_val /= (1 + node->visits);
-    return node->calced_q + u_val;
+    // printf("PUCT: %f, uval:%f\n", (color_multiplier(node->parent_node->color) * node->calced_q) + u_val, u_val);
+    return (color_multiplier(node->parent_node->color) * node->calced_q) + u_val;
 }
 
 
@@ -923,6 +941,7 @@ void MonteCarlo::init_default_node(Node* node)
     node->color = -1;
     node->move = -1;
     node->visits = 0;    
+    node->total_action_value = 0;
     node->calced_q = 0;    
     node->policy = 0;
     node->value = 0;
