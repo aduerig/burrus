@@ -94,18 +94,20 @@ struct Node
     float total_action_value; // updated in the backprop stats
 };
 
-struct new_params
-{
-    int size;
-    std::string semaphore_name;
-    std::string shared_memory_name;
-    int permissions;
-};
+// struct new_params
+// {
+//     int size;
+//     std::string semaphore_name;
+//     std::string shared_memory_name;
+//     int permissions;
+// };
+
 
 class MonteCarlo: public Player
 {
     public:
-        MonteCarlo(int col, Engine* engine, std::string m_path, int sims, bool training);
+        MonteCarlo(int col, Engine* engine, std::string m_path, int sims, bool training, 
+            sem_t* pSem, void* pSem_code, void* pSem_rest);
         
         int move(int* move_list);
         Node* traverse_tree(Node* node, int p_color);
@@ -118,17 +120,11 @@ class MonteCarlo: public Player
         void cleanup();
 
         // model and communication
-        int setup_python_communication();
-        void send_end_code_python();
-        int destroy_communication();
         void load_board_state_to_int_arr_sender(int p_color);
         int send_and_recieve_model_data(int p_color);
-        void call_python_script_helper(new_params params);
         void fill_random_ints(int* ints_to_fill, int num_ints);
-        std::string gen_random(const int len);
-        int acquire_semaphore(sem_t *);
-        int release_semaphore(sem_t *);
-
+        int acquire_semaphore(sem_t *pSemaphore);
+        int release_semaphore(sem_t *pSemaphore); 
 
         // temporary funcs
         int temp_value_calc();
@@ -169,10 +165,10 @@ class MonteCarlo: public Player
         int rc;
         void *pSharedMemory_code;
         void *pSharedMemory_rest;
-        int fd;
-        struct new_params params;
+        // int fd;
+        // struct new_params params;
 
-        // sender flag
+        // // sender flag
         int32_t send_code; // -1 is nothing, 0 is c sent, 1 is python sent
 
         // data holders

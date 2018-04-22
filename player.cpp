@@ -361,26 +361,10 @@ void Minimax::cleanup()
 
 
 
-MonteCarlo::MonteCarlo(int col, Engine* engine, std::string m_path, int sims, bool training) : Player(col, engine)
+MonteCarlo::MonteCarlo(int col, Engine* engine, std::string m_path, int sims, bool training, 
+                        sem_t* pSem, void* pSem_code, void* pSem_rest) : Player(col, engine)
 {
     model_path = m_path;
-
-
-    // asigning values to struct
-    params.semaphore_name = gen_random(10);
-    params.shared_memory_name = gen_random(10);
-    params.size = 4096;
-    // params.semaphore_name = "other_stuff";
-    // params.shared_memory_name = "shared_memory_1";
-    params.permissions = 0600;
-
-    printf("params - size: %d\n", params.size);
-    printf("params - semaphore_name: %s\n", params.semaphore_name.c_str());
-    printf("params - shared_memory_name: %s\n", params.shared_memory_name.c_str());
-    printf("params - permissions: %d\n", params.permissions);
-
-    call_python_script_helper(params);
-
 
     max_sims = sims;
     curr_root = NULL;
@@ -390,17 +374,18 @@ MonteCarlo::MonteCarlo(int col, Engine* engine, std::string m_path, int sims, bo
     explore_constant = 1;
     node_storage_counter = 0;
 
-    int ret_val = setup_python_communication();
-    if(ret_val == 1)
-    {
-        printf("Setup python communication returned with error 1 (problems with semaphore) exiting.");
-        exit(0);
-    }
-    else if(ret_val == 2)
-    {
-        printf("Setup python communication returned with error 2 (problems with shared memory) exiting.");
-        exit(0);
-    }
+    // data holders
+    num_ints_send = 128;
+    num_floats_recieve = 65;
+
+    int_arr_sender = (int32_t*) malloc(num_ints_send * sizeof(int32_t));
+    float_arr_reciever = (float*) malloc(num_floats_recieve * sizeof(float));
+
+    send_code = -1;
+
+    pSemaphore = pSem;
+    pSharedMemory_code = pSem_code;
+    pSharedMemory_rest = pSem_rest;
 
 }
 
@@ -652,177 +637,13 @@ float MonteCarlo::compute_puct(Node* node)
     return node->calced_q + u_val;
 }
 
+
 void MonteCarlo::cleanup()
 {
     printf("begining MonteCarlo cleanup\n");
-    int ret_val = destroy_communication();
-    free(saved_q);
-    
-    if(ret_val == 1)
-    {
-        printf("Setup python communication returned with error 1 (problems with semaphore) exiting.");
-        exit(0);
-    }
-    else if(ret_val == 2)
-    {
-        printf("Setup python communication returned with error 2 (problems with shared memory) exiting.");
-        exit(0);
-    }
-    printf("finished MonteCarlo cleanup\n");
-}
-
-
-// model and python communication
-// 0 is success
-// 1 is semaphore error
-// 2 is shared memory error
-int MonteCarlo::setup_python_communication()
-{
-    // printf("SEEDING RANDOM\n");
-    // srand (time(NULL));
-
-    pSemaphore = NULL;
-    pSharedMemory_code = NULL;
-    pSharedMemory_rest = NULL;
-
-    // sender flag
-    send_code = -1; // -1 is uninitilized, 0 is c sent, 1 is python sent, 2 is c sent python kill
-
-    // data holders
-    num_ints_send = 128;
-    num_floats_recieve = 65;
-
-    int_arr_sender = (int32_t*) malloc(num_ints_send * sizeof(int32_t));
-    float_arr_reciever = (float*) malloc(num_floats_recieve * sizeof(float));
-
-    
-    printf("COMMUNICATION CHANNEL INITIALIZING IN C++!\n");
-
-    // Create the shared memory
-    fd = shm_open(params.shared_memory_name.c_str(), O_RDWR | O_CREAT | O_EXCL, params.permissions);    
-
-    if (fd == -1) 
-    {
-        fd = 0;
-        printf("Creating the shared memory failed\n");
-        return 2;
-    }
-
-    else 
-    {
-        // The memory is created as a file that's 0 bytes long. Resize it.
-        rc = ftruncate(fd, params.size);
-        if (rc) 
-        {
-            printf("Resizing the shared memory failed\n");
-            return 2;
-        }
-        else 
-        {
-            // MMap the shared memory
-            //void *mmap(void *start, size_t length, int prot, int flags, int fd, off_t offset);
-            pSharedMemory_code = mmap((void *)0, (size_t)params.size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-            if (pSharedMemory_code == MAP_FAILED) 
-            {
-                pSharedMemory_code = NULL;
-                printf("MMapping the shared memory failed\n");
-                return 2;
-            }
-            else 
-            {
-                pSharedMemory_rest = (void*) (((int32_t*) pSharedMemory_code) + 1);
-                printf("pSharedMemory_code = %p\n", pSharedMemory_code);
-                printf("pSharedMemory_rest = %p\n", pSharedMemory_rest);
-            }
-        }
-    }
-    
-    if (pSharedMemory_code) 
-    {
-        // Create the semaphore
-        pSemaphore = sem_open(params.semaphore_name.c_str(), O_CREAT, params.permissions, 0);
-    
-        if (pSemaphore == SEM_FAILED) 
-        {
-            printf("Creating the semaphore failed\n");
-            return 1;
-        }
-        else 
-        {
-            printf("pSemaphore =  %p\n", (void *)pSemaphore);
-        }
-    }
-
-    printf("communication channel established\n");
-    return 0;
-}
-
-void MonteCarlo::send_end_code_python()
-{
-    send_code = 2;
-    memcpy(pSharedMemory_code, &send_code, sizeof(int32_t));
-}
-
-// 0 is success
-// 1 is semaphore error
-// 2 is shared memory error
-int MonteCarlo::destroy_communication()
-{
-    send_end_code_python();
-
-    // Announce for one last time that the semaphore is free again so that python can quit
-    printf("Final release of the semaphore and send_code followed by a 5 second pause\n"); 
-    rc = release_semaphore(pSemaphore);
-    sleep(5); // race condition, where the python takes 5 seconds to quit
-
-    printf("Final wait to acquire the semaphore\n"); 
-    rc = acquire_semaphore(pSemaphore);
-    if (!rc) 
-    {
-        printf("Destroying the shared memory.\n");
-
-        rc = munmap(pSharedMemory_code, (size_t)params.size); // Un mmap the memory
-        if (rc) 
-        {
-            printf("Unmapping the memory failed\n");
-            return 2;
-        }
-        
-        if (-1 == close(fd)) // close file descriptor 
-        {
-            printf("Closing the memory's file descriptor failed\n");
-            return 2;
-        }
-    
-        rc = shm_unlink(params.shared_memory_name.c_str()); // destroy the shared memory.
-        if (rc) 
-        {
-            printf("Unlinking the memory failed\n");
-            return 2;
-        }
-    }
-
-    printf("Destroying the semaphore.\n");
-    // Clean up the semaphore
-    rc = sem_close(pSemaphore);
-    if (rc) 
-    {
-        printf("Closing the semaphore failed\n");
-        return 1;
-        
-    }
-    rc = sem_unlink(params.semaphore_name.c_str());
-    if (rc) 
-    {
-        printf("Unlinking the semaphore failed\n");
-        return 1;
-        
-    }
-
     free(int_arr_sender);
     free(float_arr_reciever);
-
-    return 0;
+    printf("finished MonteCarlo cleanup\n");
 }
 
 void MonteCarlo::load_board_state_to_int_arr_sender(int p_color)
@@ -916,50 +737,6 @@ int MonteCarlo::send_and_recieve_model_data(int p_color)
     return 0;
 }
 
-void MonteCarlo::call_python_script_helper(new_params params)
-{
-    std::string command = "python python_model_communicator.py " + params.semaphore_name + " " + 
-                            params.shared_memory_name + " " + 
-                            model_path;
-
-    printf("EXECUTING: %s\n", command.c_str());
-    pid_t pid = fork();
-    if(pid != 0)
-    {
-        int ret_val = system(command.c_str());
-        exit(0);
-    }
-}
-
-void MonteCarlo::fill_random_ints(int* ints_to_fill, int num_ints_send)
-{
-    for(int i = 0; i < num_ints_send; i++)
-    {
-        // ints_to_fill[i] = rand();
-        ints_to_fill[i] = i;
-    }
-}
-
-// https://stackoverflow.com/questions/440133/how-do-i-create-a-random-alpha-numeric-string-in-c
-std::string MonteCarlo::gen_random(const int len) 
-{
-    std::string new_str;
-    for(int i = 0; i < len; i++)
-    {
-        new_str.append(" ");
-    }
-
-    static const char alphanum[] =
-        "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-        "abcdefghijklmnopqrstuvwxyz";
-
-    for (int i = 0; i < len; ++i) 
-    {
-        new_str[i] = alphanum[rand() % (sizeof(alphanum) - 1)];
-    }
-    return new_str;
-}
-
 int MonteCarlo::release_semaphore(sem_t *pSemaphore) 
 {
     int rc = 0;
@@ -980,6 +757,15 @@ int MonteCarlo::acquire_semaphore(sem_t *pSemaphore)
         printf("Acquiring the semaphore failed\n");
     }
     return rc;
+}
+
+void MonteCarlo::fill_random_ints(int* ints_to_fill, int num_ints_send)
+{
+    for(int i = 0; i < num_ints_send; i++)
+    {
+        // ints_to_fill[i] = rand();
+        ints_to_fill[i] = i;
+    }
 }
 
 
