@@ -32,7 +32,7 @@ while :
 do
 python cnn_resnet.py
 sleep 1
-./param_serial -rank 0 -ngames 10
+./param_serial -rank 0 -ngames 50
 # mpiexec -n 8 ./hi_mpi -ngames 10000
 sleep 1
 done
