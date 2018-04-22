@@ -249,14 +249,14 @@ int Params::play_game(Engine* e, std::vector<MonteCarlo*> players, int* num_move
     num_moves[0] = 0;
     move_list = e->generate_black_moves();
 
-    if (print_on) e->print_char();
+    if (print_on && num_moves[0] == 51) e->print_char();
 
     while(e->is_not_terminal(move_list, BLACK))
     {
         move = players[BLACK]->move(move_list);
         e->push_black_move(move);
-        if (print_on) printf("move number %i\n", num_moves[0]);
-        if (print_on) e->print_char();
+        if (print_on && num_moves[0] == 51) printf("move number %i\n", num_moves[0]);
+        if (print_on && num_moves[0] == 51) e->print_char();
         
         MC_chances[num_moves[0]] = (float *) calloc(64, sizeof(float));
         total_MC_chances[0]++;
@@ -274,8 +274,8 @@ int Params::play_game(Engine* e, std::vector<MonteCarlo*> players, int* num_move
         }
         move = players[WHITE]->move(move_list);
         e->push_white_move(move);
-        if (print_on) printf("move number %i\n", num_moves[0]);
-        if (print_on) e->print_char();
+        if (print_on && num_moves[0] == 51) printf("move number %i\n", num_moves[0]);
+        if (print_on && num_moves[0] == 51) e->print_char();
         MC_chances[num_moves[0]] = (float *) calloc(64, sizeof(float));
         MCc = players[WHITE]->get_saved_q();
         for (int i = 0; i < 64; ++i) 

@@ -389,6 +389,78 @@ MonteCarlo::MonteCarlo(int col, Engine* engine, std::string m_path, int sims, bo
 
 }
 
+// void UCTNode::dirichlet_noise(float epsilon, float alpha) {
+//     auto child_cnt = m_children.size();
+
+//     auto dirichlet_vector = std::vector<float>{};
+//     std::gamma_distribution<float> gamma(alpha, 1.0f);
+//     for (size_t i = 0; i < child_cnt; i++) {
+//         dirichlet_vector.emplace_back(gamma(Random::get_Rng()));
+//     }
+
+//     auto sample_sum = std::accumulate(begin(dirichlet_vector),
+//                                       end(dirichlet_vector), 0.0f);
+
+//     // If the noise vector sums to 0 or a denormal, then don't try to
+//     // normalize.
+//     if (sample_sum < std::numeric_limits<float>::min()) {
+//         return;
+//     }
+
+//     for (auto& v: dirichlet_vector) {
+//         v /= sample_sum;
+//     }
+
+//     child_cnt = 0;
+//     for (auto& child : m_children) {
+//         auto score = child->get_score();
+//         auto eta_a = dirichlet_vector[child_cnt++];
+//         score = score * (1 - epsilon) + epsilon * eta_a;
+//         child->set_score(score);
+//     }
+// }
+
+void MonteCarlo::add_dirichlet_noise(float epsilon, float alpha) 
+{
+    auto child_cnt = curr_root->num_children;
+
+    auto dirichlet_vector = std::vector<float>{};
+    std::gamma_distribution<float> gamma(alpha, 1.0f);
+
+
+    for (int i = 0; i < curr_root->num_children; i++) 
+    {
+        std::default_random_engine generator;
+        generator.seed(rand());
+        dirichlet_vector.emplace_back(gamma(generator));
+    }
+
+    auto sample_sum = std::accumulate(begin(dirichlet_vector),
+                                      end(dirichlet_vector), 0.0f);
+
+    // If the noise vector sums to 0 or a denormal, then don't try to
+    // normalize.
+    if (sample_sum < std::numeric_limits<float>::min()) 
+    {
+        return;
+    }
+
+    for (auto& v: dirichlet_vector) 
+    {
+        v /= sample_sum;
+    }
+
+    int child_iter = 0;
+    for (int i = 0; i < curr_root->num_children; i++) 
+    {
+        Node* child = curr_root->children_nodes + i;
+        auto score = child->policy;
+        auto eta_a = dirichlet_vector[child_iter++];
+        score = score * (1 - epsilon) + epsilon * eta_a;
+        child->policy = score;
+    }
+}
+
 int MonteCarlo::move(int* move_list)
 {
     if(move_list[0] == 0) // passing because no moves aval
@@ -409,15 +481,27 @@ int MonteCarlo::move(int* move_list)
     node_storage_counter++;
 
     expand_node(root, move_list);
-
     curr_root = root;
 
-
     // ADD NOISE
-    if(is_training)
-    {
-        // auto alpha = 0.03f * 361.0f / BOARD_SQUARES;
-    }
+    // if(is_training)
+    // {
+    //     // auto alpha = 0.03f * 361.0f / BOARD_SQUARES;
+    //     auto alpha = 0.5f;
+    //     add_dirichlet_noise
+    // }
+
+    float alpha = .005;
+    add_dirichlet_noise(0.25f, alpha);
+
+    // printf("value of root%f\n", curr_root->value);
+    // printf("\nChildren of root\n");
+    // for(int i = 0; i < curr_root->num_children; i++)
+    // {
+    //     Node* child = curr_root->children_nodes + i;
+    //     printf("child %d, policy: %f, ", i, child->policy);
+    // }
+    // printf("\n");
 
 
     int curr_sim = 0;

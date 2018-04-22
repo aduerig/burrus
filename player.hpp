@@ -22,6 +22,8 @@
 #include <string>
 #include <inttypes.h>
 #include <unistd.h>
+#include <vector>
+#include <random>
 
 // typedef int (*foo_ptr_t)( int );
 typedef void (*fp)(int);
@@ -125,6 +127,8 @@ class MonteCarlo: public Player
         void fill_random_ints(int* ints_to_fill, int num_ints);
         int acquire_semaphore(sem_t *pSemaphore);
         int release_semaphore(sem_t *pSemaphore); 
+
+        void add_dirichlet_noise(float epsilon, float alpha);
 
         // temporary funcs
         int temp_value_calc();
