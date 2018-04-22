@@ -393,7 +393,7 @@ def train():
 
         os.mkdir(new_model_dir)
         os.mkdir(os.path.join(new_model_dir, 'games'))
-        saver.save(sess, os.path.join(new_model_dir, 'mdel.ckpt'))
+        saver.save(sess, os.path.join(new_model_dir, 'model.ckpt'))
     return 1
 
 def concat_files():
