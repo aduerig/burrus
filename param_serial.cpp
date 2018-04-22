@@ -99,7 +99,7 @@ void Params::save_game_info(std::string model_path, int local_rank, int game_num
     // Filename: ${model_path}/games/${local_rank}_${game_number}.game
     FILE *fp;
     char *fnm = (char *) calloc(50, sizeof(char));
-    sprintf(fnm, "%s/games/%d_%d.game", model_path.c_str(), local_rank, game_number);
+    sprintf(fnm, "%s/games/%s.game", model_path.c_str(), gen_random(10).c_str());
     fp = fopen(fnm, "w");
 
     // save num_moves

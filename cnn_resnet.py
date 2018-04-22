@@ -248,7 +248,7 @@ def get_data(size, old_model_dir):
     model_count = len(next(os.walk('data'))[1])
     game_locs = []
 
-    for i in range(min(0, model_count-15), model_count):
+    for i in range(max(0, model_count-15), model_count):
         curr_path = os.path.join('data', 'model_' + str(i), 'games', 'all_games.game')
         x,y,z = read_in_games(curr_path)
         x_train += x
@@ -366,7 +366,9 @@ def train():
             
         saver.restore(sess, os.path.join(old_model_dir, 'model.ckpt'))
         train_batch_gen= get_data(GLOBAL_BATCH_SIZE, old_model_dir)
-
+        if train_batch_gen is None:
+            print("No games found, exiting...")
+            return -1
 
         for i in range(GLOBAL_TRAINING_STEPS):
             curr_batch_holder = next(train_batch_gen)
