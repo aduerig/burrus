@@ -11,7 +11,7 @@ PLAY_OBJECTS = play.cpp engine.cpp player.cpp
 PARAM_OBJECTS = engine.cpp player.cpp param_serial.cpp
 
 
-all: param
+all: param himpi
 
 driver: $(DRIVER_OBJECTS)
 	$(CC) $(CFLAGS) $(DRIVER_HEADERS) $(DRIVER_OBJECTS) -o driver $(LINKER_OPTIONS)
