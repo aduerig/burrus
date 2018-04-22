@@ -44,8 +44,8 @@ def cnn_block(x, train_bool, block_num):
     # conv
     conv_layer = tf.layers.conv2d(
             inputs=x,
-            filters=128,
-            kernel_size=[3, 3],
+            filters=32, # orig is 256
+            kernel_size=[3, 3], # orig is 3x3
             padding="same",
             activation=None,
             name='cnn_block_' + block_num + '_conv_layer')
@@ -71,8 +71,8 @@ def resid_block(x, train_bool, block_num):
     # conv
     conv_layer = tf.layers.conv2d(
             inputs=x,
-            filters=128,
-            kernel_size=[3, 3],
+            filters=32, # orig is 256
+            kernel_size=[3, 3], # orig is 3x3
             padding="same",
             activation=None,
             name='resid_block_' + block_num + '_conv_layer')
@@ -94,8 +94,8 @@ def resid_block(x, train_bool, block_num):
     # conv2
     conv2_layer = tf.layers.conv2d(
             inputs=first_relu,
-            filters=128,
-            kernel_size=[3, 3],
+            filters=32, # orig is 256
+            kernel_size=[3, 3], # orig is 3x3
             padding="same",
             activation=None,
             name='resid_block_' + block_num + '_conv2_layer')
@@ -147,11 +147,11 @@ def create_value_head(x, train_bool):
 
     flattened_value = tf.reshape(first_relu, [-1, 8*8])
 
-    hidden_layer = tf.layers.dense(inputs=flattened_value, units = 256, name='value_head_dense_to_dense') # only 64 possible moves, no activation
+    hidden_layer = tf.layers.dense(inputs=flattened_value, units = 64, name='value_head_dense_to_dense') # orig is 256
 
     final_relu = tf.nn.relu(hidden_layer, name='value_head_relu2')
 
-    board_value_not_capped = tf.layers.dense(inputs=final_relu, units = 1, name='value_head_dense_to_scaler') # only 64 possible moves, no activation
+    board_value_not_capped = tf.layers.dense(inputs=final_relu, units = 1, name='value_head_dense_to_scaler')
 
     board_value = tf.nn.tanh(board_value_not_capped, name='value_head_output')
 
@@ -248,7 +248,7 @@ def get_data(size, old_model_dir):
     model_count = len(next(os.walk('data'))[1])
     game_locs = []
 
-    for i in range(model_count):
+    for i in range(min(0, model_count-15), model_count):
         curr_path = os.path.join('data', 'model_' + str(i), 'games', 'all_games.game')
         x,y,z = read_in_games(curr_path)
         x_train += x
@@ -302,7 +302,7 @@ def train():
 
     # stacking 10 residual blocks
     resid_input = conv_block
-    for i in range(0, 2):
+    for i in range(0, 2): # paper is 20
         resid_input = resid_block(resid_input, train_bool, i)
     resid_final = resid_input
 

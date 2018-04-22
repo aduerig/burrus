@@ -48,11 +48,11 @@ def write_to_memory(mapfile, s):
 def write_floats_to_memory(mapfile, floats, write_file):
     s = floats.tobytes()
 
-    write_file.write("floats sending back: ")
-    for i in floats:
-        temp = "{0}, ".format(i)
-        write_file.write(temp)
-    write_file.write("\n")
+    # write_file.write("floats sending back: ")
+    # for i in floats:
+    #     temp = "{0}, ".format(i)
+    #     write_file.write(temp)
+    # write_file.write("\n")
 
     write_to_memory(mapfile, s)
 
@@ -82,11 +82,11 @@ def read_ints_from_memory(mapfile, write_file):
     # https://stackoverflow.com/questions/8461798/how-can-i-struct-unpack-many-numbers-at-once
     inters = struct.unpack("<128L", s)
 
-    write_file.write("board ints recieved: ")
-    for i in inters:
-        s = "{0}, ".format(i)
-        write_file.write(s)
-    write_file.write("\n")
+    # write_file.write("board ints recieved: ")
+    # for i in inters:
+    #     s = "{0}, ".format(i)
+    #     write_file.write(s)
+    # write_file.write("\n")
     return inters
 
 
@@ -125,8 +125,8 @@ def serve_requests(memory, semaphore, mapfile, MODEL_NAME, write_file):
         
         requests_served = 0
         while True: # serving loop
-            s = "Request number: {0}\n".format(requests_served)
-            write_file.write(s)
+            # s = "Request number: {0}\n".format(requests_served)
+            # write_file.write(s)
 
             # write_file.write("Waiting to acquire the semaphore\n")
             semaphore.acquire()
