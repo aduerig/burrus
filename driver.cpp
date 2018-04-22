@@ -324,6 +324,34 @@ int Driver::acquire_semaphore(sem_t *pSemaphore)
 }
 
 
+std::string Driver::get_newest_model_name()
+{
+    FILE *fp;
+    char *fnm = (char *) calloc(50, sizeof(char));
+    int i = 0;
+    int model_name_int;
+    do
+    {
+        sprintf(fnm,"data/model_%d/checkpoint", i);
+        fp = fopen(fnm, "r");
+        if (!fp)
+        {
+            if(i - 1 < 0)
+            {
+                printf("Exiting with return code 5 because no model folders exists in data/model\n");
+                exit(5);
+            }
+            // sprintf(fnm, "data/model_%d", i-1); # this returns full model path
+            model_name_int = i-1;
+            free(fnm);
+            return "model_" + std::to_string(model_name_int);
+        }
+        fclose(fp);
+        ++i;
+    } while (1);
+}
+
+
 void Driver::run_driver(int games_to_play, int iterations_per_move, std::string model_name, bool print_on)
 {
     Engine* e = new Engine();
@@ -335,6 +363,13 @@ void Driver::run_driver(int games_to_play, int iterations_per_move, std::string 
     // Read in the new neural network model name
 
     // std::string model_name = "model_0";
+
+    if(model_name == "recent")
+    {
+        model_name = get_newest_model_name();
+    }
+
+
     std::string model_path = "data/" + model_name;
 
     if (print_on) std::cout << "playing with model: " << model_name << std::endl;
@@ -462,7 +497,7 @@ int main(int argc, char * argv[])
         }
     }
 
-    printf("iter: %i, games: %i, model_name%s\n", iterations_per_move, games_to_play, model_name.c_str());
+    printf("iter: %i, games: %i, model_name: %s\n", iterations_per_move, games_to_play, model_name.c_str());
 
     if(model_name == "hurglblrg" || games_to_play == -1 || iterations_per_move == -1)
     {

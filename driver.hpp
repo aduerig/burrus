@@ -48,6 +48,7 @@ class Driver
         Driver();
         void run_driver(int games_to_play, int iterations_per_move, std::string model_name, bool print_on);
     private:
+    	std::string get_newest_model_name();
         int play_game(Engine* e, std::vector<Player*> players, int* num_moves, bool print_on);
         void call_python_script_helper(new_params params, std::string model_name);
         int setup_python_communication();
