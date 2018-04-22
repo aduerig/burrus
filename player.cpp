@@ -371,7 +371,7 @@ MonteCarlo::MonteCarlo(int col, Engine* engine, std::string m_path, int sims, bo
     is_training = training;
     saved_q = (float*) malloc(64 * sizeof(float));
     print_on = false;
-    explore_constant = 1;
+    explore_constant = 10;
     node_storage_counter = 0;
 
     // data holders
@@ -450,6 +450,13 @@ void MonteCarlo::add_dirichlet_noise(float epsilon, float alpha)
         v /= sample_sum;
     }
 
+    // printf("\ndialectric\n");
+    // for(int i = 0; i < curr_root->num_children; i++)
+    // {
+    //     printf("%f, ", dirichlet_vector[i]);
+    // }
+    // printf("\n");
+
     int child_iter = 0;
     for (int i = 0; i < curr_root->num_children; i++) 
     {
@@ -457,8 +464,10 @@ void MonteCarlo::add_dirichlet_noise(float epsilon, float alpha)
         auto score = child->policy;
         auto eta_a = dirichlet_vector[child_iter++];
         score = score * (1 - epsilon) + epsilon * eta_a;
+        // printf("orig: %f + adding: %f, ", score * (1 - epsilon), epsilon * eta_a);
         child->policy = score;
     }
+    // printf("\n");
 }
 
 int MonteCarlo::move(int* move_list)
@@ -491,7 +500,7 @@ int MonteCarlo::move(int* move_list)
     //     add_dirichlet_noise
     // }
 
-    float alpha = .005;
+    float alpha = .4;
     add_dirichlet_noise(0.25f, alpha);
 
     // printf("value of root%f\n", curr_root->value);
@@ -528,6 +537,14 @@ int MonteCarlo::move(int* move_list)
         }
         saved_value = root->value;
     }
+
+    // printf("\nvisits\n");
+    // for(int i = 0; i < curr_root->num_children; i++)
+    // {
+    //     Node* child = curr_root->children_nodes + i;
+    //     printf("child %d, visits: %d, ", i, child->visits);
+    // }
+    // printf("\n");
 
     Node* best_node = max_child_visits(root);
 

@@ -302,7 +302,7 @@ def train():
 
     # stacking 10 residual blocks
     resid_input = conv_block
-    for i in range(0, 10):
+    for i in range(0, 2):
         resid_input = resid_block(resid_input, train_bool, i)
     resid_final = resid_input
 
