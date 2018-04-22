@@ -352,7 +352,7 @@ def train():
     init = tf.global_variables_initializer()
 
     # training
-    with tf.Session(config=tf.ConfigProto(log_device_placement=True)) as sess:
+    with tf.Session(config=tf.ConfigProto()) as sess:
         sess.run(init)
 
         old_model_dir, new_model_dir = get_model_directories()
@@ -369,7 +369,6 @@ def train():
 
 
         for i in range(GLOBAL_TRAINING_STEPS):
-            print(i)
             curr_batch_holder = next(train_batch_gen)
             curr_batch_x = curr_batch_holder[0]
             curr_batch_y_policy_labels = curr_batch_holder[1]
