@@ -403,7 +403,7 @@ def concat_files():
     model_count = len(next(os.walk(MODELS_DIRECTORY))[1])-1
     latest_model_path = 'model_' + str(model_count)
     path = os.path.join(MODELS_DIRECTORY, latest_model_path, 'games')
-    if not os.path.isdir(MODELS_DIRECTORY) or os.path.isdir(path):
+    if not os.path.isdir(MODELS_DIRECTORY) or not os.path.isdir(path):
         return
     if os.path.exists(os.path.join(path, out_filename)):
         return
