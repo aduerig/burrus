@@ -525,7 +525,7 @@ void Params::run_params(int local_rank, int games_per_proc)
     srand(time(NULL)); // seed rand
 
     bool print_on = true;
-    int iterations_per_move = 30;
+    int iterations_per_move = 50;
 
 
     if (local_rank == -1)
