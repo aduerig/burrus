@@ -211,7 +211,6 @@ def get_inf_batch_gens(data, size):
             np.random.set_state(rng_state)
             np.random.shuffle(data[2])
             loop += 1
-            print('looping training data for the {0} time'.format(loop))
             continue
         x = data[0][curr:curr+size]
         y_real = data[1][curr:curr+size]
@@ -288,6 +287,7 @@ def read_in_games(filename):
                 #skip saved values for now
                 f.readline()
                 results.append([int(f.readline())])
+    print("loaded {0} board states".format(len(boards)))
     return boards, evals, results
 
 # returns 1 when successful
