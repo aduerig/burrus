@@ -260,8 +260,6 @@ def get_data(size, old_model_dir):
     y_true_value = np.array(y_true_value)
 
     train = [x_train, y_policy_labels, y_true_value]
-    print(train)
-    input()
     return get_inf_batch_gens(train, size)
 
 def bitfield(n):
@@ -371,6 +369,7 @@ def train():
 
 
         for i in range(GLOBAL_TRAINING_STEPS):
+            print(i)
             curr_batch_holder = next(train_batch_gen)
             curr_batch_x = curr_batch_holder[0]
             curr_batch_y_policy_labels = curr_batch_holder[1]
@@ -394,7 +393,7 @@ def train():
 
         os.mkdir(new_model_dir)
         os.mkdir(os.path.join(new_model_dir, 'games'))
-        saver.save(sess, os.path.join(new_model_dir, 'mdel.ckpt'))
+        saver.save(sess, os.path.join(new_model_dir, 'model.ckpt'))
     return 1
 
 def concat_files():
