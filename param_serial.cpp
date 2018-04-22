@@ -130,8 +130,21 @@ void Params::save_game_info(std::string model_path, int local_rank, int game_num
         // Save if current player won (1 x Int)
         // i % 2 == 0 for black. result is 0 for black win.
         // i % 2 == 1 for white. result is 1 for white win.
-        fprintf(fp, "%d\n", (result == 2 ? 2 : ((i % 2) == result)));
-        
+        // fprintf(fp, "%d\n", (result == 2 ? 2 : ((i % 2) == result)));
+        int result_parsed;
+        if(result == 0)
+        {
+            result_parsed = -1;
+        }
+        else if(result == 1)
+        {
+            result_parsed = 1;
+        }
+        else if(result == 2)
+        {
+            result_parsed = 0;
+        }
+        fprintf(fp, "%d\n", result_parsed);
     }
 
     fclose(fp);
