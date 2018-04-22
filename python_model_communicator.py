@@ -211,6 +211,7 @@ def main(SEMAPHORE_NAME, SHARED_MEMORY_NAME, MODEL_PATH):
     s = "{0} iterations complete in {1} seconds\n".format(total_iterations, time_end - time_start)
     write_file.write(s)
     write_file.close()
+    time.sleep(8)
 
 
 parser = argparse.ArgumentParser()
