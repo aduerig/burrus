@@ -324,10 +324,8 @@ int Driver::acquire_semaphore(sem_t *pSemaphore)
 }
 
 
-void Driver::run_driver(int games_to_play, int iterations_per_move)
+void Driver::run_driver(int games_to_play, int iterations_per_move, std::string model_name, bool print_on)
 {
-    bool print_on = true;
-
     Engine* e = new Engine();
 
     std::chrono::time_point<std::chrono::system_clock> game_start_timer, game_end_timer, wait1_start_timer, wait1_end_timer;
@@ -336,7 +334,7 @@ void Driver::run_driver(int games_to_play, int iterations_per_move)
 
     // Read in the new neural network model name
 
-    std::string model_name = "model_0";
+    // std::string model_name = "model_0";
     std::string model_path = "data/" + model_name;
 
     if (print_on) std::cout << "playing with model: " << model_name << std::endl;
@@ -384,12 +382,12 @@ void Driver::run_driver(int games_to_play, int iterations_per_move)
 
     std::vector<Player*> players;
 
-    players.push_back(new MonteCarlo(BLACK, e, model_name, iterations_per_move, false, 
-                        pSemaphore, pSharedMemory_code, pSharedMemory_rest)); // black
     // players.push_back(new MonteCarlo(WHITE, e, model_name, iterations_per_move, false,
                         // pSemaphore, pSharedMemory_code, pSharedMemory_rest)); // white
-    players.push_back(new Rand(WHITE, e)); // white
-     
+    players.push_back(new Rand(BLACK, e)); // white
+    players.push_back(new MonteCarlo(WHITE, e, model_name, iterations_per_move, false, 
+                        pSemaphore, pSharedMemory_code, pSharedMemory_rest)); // black
+
     // Variable for the number of moves in the game
     int* num_moves = (int*) calloc(1, sizeof(int));
 
@@ -430,16 +428,58 @@ void Driver::run_driver(int games_to_play, int iterations_per_move)
 }
 
 
+// example call
+// ./driver -iter 20 -ngames 10 -name model_0
 int main(int argc, char * argv[])
 {
-    srand(time(NULL)); // seed rand
+    
+    // int iterations_per_move = 500;
+    // int games_to_play = 10;
+    // std::string model_name = "model_5";
 
+    int iterations_per_move = -1; 
+    int games_to_play = -1;
+    std::string model_name = "hurglblrg";
+    int print_on = 0;
+
+    for (int i = 0; i < argc; ++i)
+    {
+        if (strcmp(argv[i], "-iter") == 0)
+        {
+            iterations_per_move = atoi(argv[i+1]);
+        }
+        if (strcmp(argv[i], "-ngames") == 0)
+        {
+            games_to_play = atoi(argv[i+1]);
+        }
+        if (strcmp(argv[i], "-name") == 0)
+        {
+            model_name = argv[i+1];
+        }
+        if (strcmp(argv[i], "-print") == 0)
+        {
+            print_on = atoi(argv[i+1]);
+        }
+    }
+
+    printf("iter: %i, games: %i, model_name%s\n", iterations_per_move, games_to_play, model_name.c_str());
+
+    if(model_name == "hurglblrg" || games_to_play == -1 || iterations_per_move == -1)
+    {
+        printf("improper argument string, you need -name, -ngames, and -iter\n -print is optional arg (default off)\n");
+        exit(0);
+    }
+
+    bool print_on_bool = false;
+    if(print_on)
+    {
+        print_on_bool = true;
+    }
+
+    srand(time(NULL)); // seed rand
     Driver* p = new Driver();
     
-    int iterations_per_move = 300;
-    int games_to_play = 1;
-    
-    p->run_driver(games_to_play, iterations_per_move);
+    p->run_driver(games_to_play, iterations_per_move, model_name, print_on_bool);
     
     return 0;
 }
