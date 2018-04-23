@@ -258,9 +258,9 @@ int Minimax::move(int* move_list)
 
 
     //timing
-    std::chrono::time_point<std::chrono::system_clock> t1, t2;
-    std::chrono::duration<double, std::nano> time_cast_result;
-    t1 = std::chrono::system_clock::now();
+    // std::chrono::time_point<std::chrono::system_clock> t1, t2;
+    // std::chrono::duration<double, std::nano> time_cast_result;
+    // t1 = std::chrono::system_clock::now();
     //end timing
 
     node_count = 0;
@@ -314,12 +314,12 @@ int Minimax::move(int* move_list)
     free(copied_move_list);
 
     //timing
-    t2 = std::chrono::system_clock::now();
-    time_cast_result = cast_nano2(t2 - t1);
-    double timing_temp = (double) time_cast_result.count() / node_count;
+    // t2 = std::chrono::system_clock::now();
+    // time_cast_result = cast_nano2(t2 - t1);
+    // double timing_temp = (double) time_cast_result.count() / node_count;
 
-    std::cout << "total nodes examined: " << node_count << " with " << timing_temp << " nanoseconds per move" << std::endl;
-    std::cout << "resulting in NPS of: " << 1.0 / (timing_temp * .000000001) << std::endl;
+    // std::cout << "total nodes examined: " << node_count << " with " << timing_temp << " nanoseconds per move" << std::endl;
+    // std::cout << "resulting in NPS of: " << 1.0 / (timing_temp * .000000001) << std::endl;
     //end timing
 
     return(best_move);
@@ -387,38 +387,9 @@ MonteCarlo::MonteCarlo(int col, Engine* engine, std::string m_path, int sims, bo
     pSharedMemory_code = pSem_code;
     pSharedMemory_rest = pSem_rest;
 
+    no_decision = 0;
 }
 
-// void UCTNode::dirichlet_noise(float epsilon, float alpha) {
-//     auto child_cnt = m_children.size();
-
-//     auto dirichlet_vector = std::vector<float>{};
-//     std::gamma_distribution<float> gamma(alpha, 1.0f);
-//     for (size_t i = 0; i < child_cnt; i++) {
-//         dirichlet_vector.emplace_back(gamma(Random::get_Rng()));
-//     }
-
-//     auto sample_sum = std::accumulate(begin(dirichlet_vector),
-//                                       end(dirichlet_vector), 0.0f);
-
-//     // If the noise vector sums to 0 or a denormal, then don't try to
-//     // normalize.
-//     if (sample_sum < std::numeric_limits<float>::min()) {
-//         return;
-//     }
-
-//     for (auto& v: dirichlet_vector) {
-//         v /= sample_sum;
-//     }
-
-//     child_cnt = 0;
-//     for (auto& child : m_children) {
-//         auto score = child->get_score();
-//         auto eta_a = dirichlet_vector[child_cnt++];
-//         score = score * (1 - epsilon) + epsilon * eta_a;
-//         child->set_score(score);
-//     }
-// }
 
 void MonteCarlo::add_dirichlet_noise(float epsilon, float alpha) 
 {
@@ -472,14 +443,19 @@ void MonteCarlo::add_dirichlet_noise(float epsilon, float alpha)
 
 int MonteCarlo::move(int* move_list)
 {
+    // printf("color: %i\n", color);
     if(move_list[0] == 0) // passing because no moves aval
     {
+        no_decision = 1;
         return -1;
     }
     if(move_list[0] == 1) // if only one choice return only move
     {
+        no_decision = 1;
         return move_list[1];
     }
+
+    no_decision = 0;
 
     // setting up root node info
     Node* root = create_default_node();
@@ -501,7 +477,7 @@ int MonteCarlo::move(int* move_list)
     //     add_dirichlet_noise
     // }
 
-    float alpha = .03;
+    float alpha = .2;
     add_dirichlet_noise(0.25f, alpha);
 
     // printf("value of root%f\n", curr_root->value);
@@ -516,7 +492,7 @@ int MonteCarlo::move(int* move_list)
 
     int curr_sim = 0;
     int p_color = color;
-    while(curr_sim < max_sims)
+    while(curr_sim < max_sims-1)
     {
         if(print_on) printf("\n--------- NEW SIMULATION #%i ----------\n\n", curr_sim);
         Node* leaf = traverse_tree(root, p_color); // get latest unvisited node based on previous PUCT ratings
@@ -534,22 +510,28 @@ int MonteCarlo::move(int* move_list)
         }
         for(int i = 0; i < root->num_children; i++)
         {
-            saved_q[root->children_nodes->move] = root->children_nodes->calced_q;
+            Node* iter_child = root->children_nodes + i;
+            saved_q[iter_child->move] = iter_child->calced_q;
         }
         saved_value = root->value;
     }
 
     // printf("\nroot info\n");
+    // printf("my board:    %llu\n", e->get_color(color));
+    // printf("enemy board: %llu\n", e->get_color(1-color));
     // printf("\nvisits: %d\ncalced_q: %f\npolicy: %f\nvalue: %f\ntotal_action_value: %f\n", curr_root->visits, curr_root->calced_q, curr_root->policy, curr_root->value, curr_root->total_action_value);
-
 
     // printf("\nchild info\n");
     // for(int i = 0; i < curr_root->num_children; i++)
     // {
     //     Node* child = curr_root->children_nodes + i;
-    //     printf("\nchild %d\nvisits:             %d\ncalced_q:           %f\npolicy:             %f\nvalue:             %f\ntotal_action_value: %f\n", i, child->visits, child->calced_q, child->policy, child->value, child->total_action_value);
+    //     printf("\nchild %d\nvisits:             %d\ncalced_q:           %f\npolicy:             %f\nvalue:             %f\ntotal_action_value: %f\nmove: %i\n", i, child->visits, child->calced_q, child->policy, child->value, child->total_action_value, child->move);
     // }
     // printf("\n");
+
+    // printf("saved_q\n")
+
+    // exit(0);
 
     Node* best_node = max_child_visits(root);
 
@@ -630,7 +612,7 @@ void MonteCarlo::expand_node(Node* node, int* move_list)
         // initializing a PASS node
         // run network here to get policies for children, and value (needed for next line)
         send_and_recieve_model_data(node->color);
-        node->value = color_multiplier(node->color) * float_arr_reciever[64];
+        node->value = float_arr_reciever[64];
         // TEMP
         // node->value = color_multiplier(node->color) * temp_value_calc();
         // node->value = temp_value_calc();
@@ -655,7 +637,14 @@ void MonteCarlo::expand_node(Node* node, int* move_list)
     // run network here to get policies for children, and value (needed for next line)
     // float_arr_reciever contains 64 policies, and the 65th is the value prediciton
     send_and_recieve_model_data(node->color);
-    node->value = color_multiplier(node->color) * float_arr_reciever[64];
+    node->value = float_arr_reciever[64];
+
+    // for(int i = 0; i < 65; i++)
+    // {
+    //     printf("%f, ", float_arr_reciever[i]);
+    // }
+    // printf("\n");
+
 
     // TEMP
     // node->value = color_multiplier(node->color) * temp_value_calc();

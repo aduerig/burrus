@@ -149,6 +149,9 @@ class MonteCarlo: public Player
         float* get_saved_q();
         float get_saved_value();
 
+        int no_decision;
+
+
     private:
         std::string model_path;
         int max_sims;

@@ -46,15 +46,17 @@ class Params
 {
     public:
         Params();
-        void run_params(int local_rank, int games_per_proc);
+        void run_params(int local_rank, int games_per_proc, int iterations_per_move, bool print_on);
     private:
         std::string get_newest_model_name();
+        void load_ull_into_int_arr(Engine* e, int* int_board_loader, U64 from_board);
         void save_game_info(std::string model_path, int local_rank, int game_number, Engine* e, 
-                                        int num_moves, int result, float **MC_chances, float *saved_values);
+                                        int num_moves, int result, float **MC_chances, float *saved_values, int* no_decision_arr, int* decisions_made);
         void save_timer_info(std::string model_path, int local_rank, 
                                                  std::chrono::duration<double, std::nano> gt, 
                                                  std::chrono::duration<double, std::nano> w1t);
-        int play_game(Engine* e, std::vector<MonteCarlo*> players, int* num_moves, float **MC_chances, int* total_MC_chances, float *saved_values, bool print_on);
+        int play_game(Engine* e, std::vector<MonteCarlo*> players, int* num_moves, float **MC_chances, int* total_MC_chances, 
+                                                float *saved_values, int* no_decision_arr, int* decisions_made, bool print_on);
         void call_python_script_helper(new_params params, std::string model_name);
         int setup_python_communication();
         void send_end_code_python();

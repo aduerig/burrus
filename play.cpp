@@ -33,7 +33,7 @@ int play_game(Engine* e, std::vector<Player*> players, int* num_moves)
     int* move_list;
 
     // printf("inital board state\n");
-    e->print_char();
+    // e->print_char();
 
     move_list = e->generate_black_moves();
     while(e->is_not_terminal(move_list, BLACK))
@@ -46,7 +46,7 @@ int play_game(Engine* e, std::vector<Player*> players, int* num_moves)
         // std::cout <<  "making move: " << move << std::endl;
         e->push_black_move(move);
         num_moves[0]++;
-        e->print_char();
+        // e->print_char();
         // printf("score of board above %i\n", e->score_board());
         // std::cin.ignore( std::numeric_limits <std::streamsize> ::max(), '\n' );
 
@@ -63,7 +63,7 @@ int play_game(Engine* e, std::vector<Player*> players, int* num_moves)
         // std::cout <<  "making move: " << move << std::endl;
         e->push_white_move(move);
         num_moves[0]++;
-        e->print_char();
+        // e->print_char();
         // printf("score of board above %i\n", e->score_board());
         // std::cin.ignore( std::numeric_limits <std::streamsize> ::max(), '\n' );
 
@@ -76,17 +76,28 @@ int play_game(Engine* e, std::vector<Player*> players, int* num_moves)
 }
 
 
-int main()
+int main(int argc, char * argv[])
 {
+    int depth = 0; 
+
+    for (int i = 0; i < argc; ++i)
+    {
+        if (strcmp(argv[i], "-depth") == 0)
+        {
+            depth = atoi(argv[i+1]);
+        }
+    }
+
+
     srand(time(NULL));
     Engine* e = new Engine();
     
     std::vector<Player*> players;
     // warinign players must be instaniated in the right order, 0 then 1
     // players.push_back(new Rand(0, e)); // black
-    players.push_back(new Human(0, e)); // white
-    players.push_back(new Minimax(1, e, 10)); // white
-    // players.push_back(new Rand(1, e)); // black
+    players.push_back(new Rand(BLACK, e)); // black
+    players.push_back(new Minimax(WHITE, e, depth)); // white
+    // players.push_back(new Rand(1, e)); // white
 
     std::chrono::time_point<std::chrono::system_clock> t1, t2;
     std::chrono::duration<double, std::nano> time_cast_result;
@@ -96,7 +107,7 @@ int main()
     num_moves[0] = 0;
     t1 = std::chrono::system_clock::now();
 
-    int num_games = 1;
+    int num_games = 1000;
     num_moves[0] = 0;
     int result_store[3] = {0, 0, 0};
     
@@ -120,7 +131,7 @@ int main()
     std::cout << "resulting in games per second of: " << 1.0 / (temp2 * .000000001) << std::endl;
 
     printf("out of %i games\nwhite won: %i\nblack won %i\ndraws %i\nwhite win percentage: %f\n", 
-                    num_games, result_store[1], result_store[0], result_store[2], (float)result_store[1] / num_games);
+                    num_games, result_store[1], result_store[0], result_store[2], (float)result_store[1] / (result_store[1] + result_store[0]));
 
     // clean up
     delete(players[0]);

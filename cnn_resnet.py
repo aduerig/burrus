@@ -10,9 +10,9 @@ import random
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
 
-GLOBAL_LEARNING_RATE = .2
+GLOBAL_LEARNING_RATE = .1
 GLOBAL_TRAINING_STEPS = 1000
-GLOBAL_BATCH_SIZE = 64
+GLOBAL_BATCH_SIZE = 128
 
 MODELS_DIRECTORY = 'data'
 
@@ -38,13 +38,15 @@ MODELS_DIRECTORY = 'data'
 # train_bool is set to True or False depending on if its in infrence or not 
 #       (probably will always not be since infrence will be run in c++, not this model)
 def cnn_block(x, train_bool, block_num):
-    x = tf.reshape(x, [-1, 8, 8, 2])
+    # x = tf.reshape(x, [-1, 8, 8, 2])
+    x = tf.reshape(x, [-1, 8, 8, 2]) # trying out a different reshape
+
 
     block_num = str(block_num)
     # conv
     conv_layer = tf.layers.conv2d(
             inputs=x,
-            filters=8, # orig is 256
+            filters=16, # orig is 256
             kernel_size=[3, 3], # orig is 3x3
             padding="same",
             activation=None,
@@ -71,7 +73,7 @@ def resid_block(x, train_bool, block_num):
     # conv
     conv_layer = tf.layers.conv2d(
             inputs=x,
-            filters=8, # orig is 256
+            filters=16, # orig is 256
             kernel_size=[3, 3], # orig is 3x3
             padding="same",
             activation=None,
@@ -94,7 +96,7 @@ def resid_block(x, train_bool, block_num):
     # conv2
     conv2_layer = tf.layers.conv2d(
             inputs=first_relu,
-            filters=8, # orig is 256
+            filters=16, # orig is 256
             kernel_size=[3, 3], # orig is 3x3
             padding="same",
             activation=None,
@@ -147,7 +149,7 @@ def create_value_head(x, train_bool):
 
     flattened_value = tf.reshape(first_relu, [-1, 8*8])
 
-    hidden_layer = tf.layers.dense(inputs=flattened_value, units = 16, name='value_head_dense_to_dense') # orig is 256
+    hidden_layer = tf.layers.dense(inputs=flattened_value, units = 32, name='value_head_dense_to_dense') # orig is 256
 
     final_relu = tf.nn.relu(hidden_layer, name='value_head_relu2')
 
@@ -277,16 +279,36 @@ def read_in_games(filename):
             if not move_count:
                 break
             for i in range(int(move_count)):
-                board1 = bitfield(int(f.readline()))
-                board2 = bitfield(int(f.readline()))
+                # Grabbing board states
+                board1 = []
+                stripped_line = f.readline().strip()
+                splitted_arr = stripped_line.split(',')[:-1]
+                for _j in splitted_arr:
+                    board1.append(int(_j))
+               
+                board2 = []
+                stripped_line = f.readline().strip()
+                splitted_arr = stripped_line.split(',')[:-1]
+                for _j in splitted_arr:
+                    board2.append(int(_j))
+
                 boards.append(board1+board2)
+                
+                # grabbing q_vals
                 arr = []
-                for _j in range(64):
-                    arr.append(float(f.readline()))
+                stripped_line = f.readline().strip()
+                splitted_arr = stripped_line.split(',')[:-1]
+                for _j in splitted_arr:
+                    arr.append(float(_j))
                 evals.append(arr)
-                #skip saved values for now
-                f.readline()
-                results.append([int(f.readline())])
+
+                # grabbing final result
+                stripped_line = f.readline().strip()
+                results.append([int(stripped_line)])
+    # print(boards[0])
+    # print(evals[0])
+    # print(results[0])
+    # exit()
     print("loaded {0} board states".format(len(boards)))
     return boards, evals, results
 

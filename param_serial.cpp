@@ -93,58 +93,115 @@ std::string Params::get_newest_model_name()
  *       If you use the function I wrote below (read_game_info(...)), it should read everything correctly.
  */
 
+
+void Params::load_ull_into_int_arr(Engine* e, int* int_board_loader, U64 from_board)
+{
+    int index;
+    // printf("%llu\n", from_board);
+    // e->print_char();
+    memset(int_board_loader, 0, 64 * sizeof(int));
+    while(from_board)
+    {
+        index = e->lsb_digit(from_board);
+        int_board_loader[index] = 1;
+        // printf("index: %i\n", index);
+        from_board -= (1ULL << index);
+    }
+}
+
+
 void Params::save_game_info(std::string model_path, int local_rank, int game_number, Engine* e, 
-                                        int num_moves, int result, float **MC_chances, float *saved_values)
+                                        int num_moves, int result, float **MC_chances, float *saved_values, int* no_decision_arr, int* decisions_made)
 {
     // Filename: ${model_path}/games/${local_rank}_${game_number}.game
     FILE *fp;
-    char *fnm = (char *) calloc(50, sizeof(char));
+    char* fnm = (char*) calloc(50, sizeof(char));
+    int* int_board_loader = (int*) calloc(64, sizeof(int));
+    
     sprintf(fnm, "%s/games/%s.game", model_path.c_str(), gen_random(10).c_str());
     fp = fopen(fnm, "w");
 
+    int result_parsed;
+    int multiplier;
+    if(result == 0)
+    {
+        result_parsed = -1;
+    }
+    else if(result == 1)
+    {
+        result_parsed = 1;
+    }
+    else if(result == 2)
+    {
+        result_parsed = 0;
+    }
+
     // save num_moves
-    fprintf(fp,"%d\n",num_moves);  
+    // fprintf(fp, "%d\n", num_moves); //doesnt record moves it didn't make a decision in
+    fprintf(fp, "%d\n", decisions_made[0]);
     for (int i = num_moves-1; i >= 0; --i)
     {
         e->stack_pop();
+        if(no_decision_arr[i] == 1)
+        {
+            continue;
+        }
+
         // Save Pieces of player whose turn it is (U64)
         // Save Pieces of other player (U64)
         if (i % 2 == 0) // Black plays when num_moves is even. Save black first, then white.
         { 
-            fprintf(fp,"%llu\n%llu\n", (unsigned long long)e->pos.black_board, (unsigned long long)e->pos.white_board);
+            // fprintf(fp, "%llu\n%llu\n", e->pos.black_board, e->pos.white_board);
+            load_ull_into_int_arr(e, int_board_loader, e->pos.black_board);
+            for(int j = 0; j < 64; j++)
+            {
+                fprintf(fp, "%i,", int_board_loader[j]);
+            }
+            fprintf(fp, "\n");
+            load_ull_into_int_arr(e, int_board_loader, e->pos.white_board);
+            for(int j = 0; j < 64; j++)
+            {
+                fprintf(fp, "%i,", int_board_loader[j]);
+            }
+            fprintf(fp, "\n");
         }
         else // White plays when num_moves is odd. Save white first, then black.
         {
-            fprintf(fp,"%llu\n%llu\n", e->pos.white_board, e->pos.black_board);
+            // fprintf(fp, "%llu\n%llu\n", e->pos.white_board, e->pos.black_board);
+            load_ull_into_int_arr(e, int_board_loader, e->pos.white_board);
+            for(int j = 0; j < 64; j++)
+            {
+                fprintf(fp, "%i,", int_board_loader[j]);
+            }
+            fprintf(fp, "\n");
+            load_ull_into_int_arr(e, int_board_loader, e->pos.black_board);
+            for(int j = 0; j < 64; j++)
+            {
+                fprintf(fp, "%i,", int_board_loader[j]);
+            }
+            fprintf(fp, "\n");
         }
 
         // Save monte carlo search results (64 x 32 bit floats)
         for (int j = 0; j < 64; ++j)
         {
-            fprintf(fp, "%g\n", MC_chances[i][j]); // MC chances for move i square j
+            fprintf(fp, "%f,", MC_chances[i][j]); // MC chances for move i square j
+            // printf("%f, ", MC_chances[i][j]);
         }
-       
+        // exit(0);
+        fprintf(fp, "\n");
+        
         // save the saved value 
-        fprintf(fp, "%f\n", saved_values[i]);
+        // fprintf(fp, "%f\n", saved_values[i]);
 
         // Save if current player won (1 x Int)
         // i % 2 == 0 for black. result is 0 for black win.
         // i % 2 == 1 for white. result is 1 for white win.
         // fprintf(fp, "%d\n", (result == 2 ? 2 : ((i % 2) == result)));
-        int result_parsed;
-        if(result == 0)
-        {
-            result_parsed = -1;
-        }
-        else if(result == 1)
-        {
-            result_parsed = 1;
-        }
-        else if(result == 2)
-        {
-            result_parsed = 0;
-        }
-        fprintf(fp, "%d\n", result_parsed);
+        
+        multiplier = (2 * (i % 2)) - 1;
+        
+        fprintf(fp, "%d\n", result_parsed * multiplier);
     }
 
     fclose(fp);
@@ -191,7 +248,7 @@ void Params::read_game_info(std::string game_path, int *n_moves, U64 *player_boa
     opponent_boards = (U64 *) calloc(n_moves[0], sizeof(U64)); 
     MCvals = (float **) calloc(n_moves[0], sizeof(float *));
     result = (int *) calloc(n_moves[0], sizeof(int));
-    saved_values = (float *) calloc(n_moves[0],sizeof(float));
+    saved_values = (float *) calloc(n_moves[0], sizeof(float));
     // Loop over number of moves
     for (int i = n_moves[0]-1;i >= 0; --i)
     {
@@ -241,7 +298,8 @@ void Params::save_timer_info(std::string model_path, int local_rank,
 
 
 /* MRD I copied this from play.cpp but added the MC_chances parameter and the few lines that use it*/
-int Params::play_game(Engine* e, std::vector<MonteCarlo*> players, int* num_moves, float **MC_chances, int* total_MC_chances, float *saved_values, bool print_on)
+int Params::play_game(Engine* e, std::vector<MonteCarlo*> players, int* num_moves, float **MC_chances, int* total_MC_chances, 
+                    float *saved_values, int* no_decision_arr, int* decisions_made, bool print_on)
 {
     int move;
     int* move_list;
@@ -264,10 +322,15 @@ int Params::play_game(Engine* e, std::vector<MonteCarlo*> players, int* num_move
         for (int i = 0; i < 64; ++i) 
         { 
             MC_chances[num_moves[0]][i] = MCc[i]; 
+            // printf("%f, ", MC_chances[num_moves[0]][i]);
         }
+        // printf("\n");
         saved_values[num_moves[0]] = players[BLACK]->get_saved_value();
+        no_decision_arr[num_moves[0]] = players[BLACK]->no_decision;
+        decisions_made[0] += (1-players[BLACK]->no_decision);
         num_moves[0]++;
 
+        // exit(0);
         //TEMP
         // std::cin.ignore( std::numeric_limits <std::streamsize> ::max(), '\n' );
         //TEMP
@@ -288,6 +351,8 @@ int Params::play_game(Engine* e, std::vector<MonteCarlo*> players, int* num_move
             MC_chances[num_moves[0]][i] = MCc[i]; 
         }
         saved_values[num_moves[0]] = players[WHITE]->get_saved_value();
+        no_decision_arr[num_moves[0]] = players[WHITE]->no_decision;
+        decisions_made[0] += (1-players[WHITE]->no_decision);
         num_moves[0]++;
 
         // TEMP
@@ -520,14 +585,8 @@ int Params::acquire_semaphore(sem_t *pSemaphore)
 }
 
 
-void Params::run_params(int local_rank, int games_per_proc)
+void Params::run_params(int local_rank, int games_per_proc, int iterations_per_move, bool print_on)
 {
-    srand(time(NULL)); // seed rand
-
-    bool print_on = true;
-    int iterations_per_move = 50;
-
-
     if (local_rank == -1)
     {
         fprintf(stderr,"ERROR: local_rank = -1. Please specify local rank with -rank\n");
@@ -650,13 +709,16 @@ void Params::run_params(int local_rank, int games_per_proc)
     {
         total_MC_chances[0] = 0;
         if(print_on) std::cout << "Playing game " << i + games_per_proc * local_rank << " on processor: " << local_rank << std::endl;
-        float **MC_chances = (float **) calloc(e->get_max_move_length(), sizeof(float *));
-        float *saved_values = (float *) calloc(e->get_max_move_length(), sizeof(float));
+        float** MC_chances = (float**) calloc(e->get_max_move_length(), sizeof(float*));
+        float* saved_values = (float*) calloc(e->get_max_move_length(), sizeof(float));
+        int* no_decision_arr = (int*) calloc(e->get_max_move_length(), sizeof(int));
+        int* decisions_made = (int*) calloc(1, sizeof(int));
         // result holds 0 for black win, 1 for white win, and 2 for draw
-        int result = play_game(e, players, num_moves, MC_chances, total_MC_chances, saved_values, print_on);
+        int result = play_game(e, players, num_moves, MC_chances, total_MC_chances, saved_values, no_decision_arr, decisions_made, print_on);
+        // printf("result is%i\n", result);
         if(print_on) std::cout << "Processor: " << local_rank << " finished playing game, saving data now to path: " << model_path << std::endl;
         // save the game's info.
-        save_game_info(model_path, local_rank, i, e, num_moves[0], result, MC_chances, saved_values);
+        save_game_info(model_path, local_rank, i, e, num_moves[0], result, MC_chances, saved_values, no_decision_arr, decisions_made);
         if(print_on) std::cout << "Processor: " << local_rank << " finished saving data, resetting engine now." << std::endl;
 
         // free and reset the engine for a new game
@@ -666,6 +728,8 @@ void Params::run_params(int local_rank, int games_per_proc)
         }
         free(MC_chances);
         free(saved_values);
+        free(no_decision_arr);
+        free(decisions_made);
         e->reset_engine();
     }
     players.clear();
@@ -713,6 +777,7 @@ int main(int argc, char * argv[])
 {
     int local_rank = -1; 
     int games_per_proc = -1;
+    int iterations_per_move = 50;
 
     for (int i = 0; i < argc; ++i)
     {
@@ -726,8 +791,11 @@ int main(int argc, char * argv[])
         }
     }
 
+    srand(time(NULL)); // seed rand
+
+    bool print_on = false;
 
     Params* p = new Params();
-    p->run_params(local_rank, games_per_proc);
+    p->run_params(local_rank, games_per_proc, iterations_per_move, print_on);
     return 0;
 }

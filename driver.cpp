@@ -352,7 +352,7 @@ std::string Driver::get_newest_model_name()
 }
 
 
-void Driver::run_driver(int games_to_play, int iterations_per_move, std::string model_name, bool print_on)
+void Driver::run_driver(int games_to_play, int iterations_per_move, std::string model_name, bool print_on, int depth)
 {
     Engine* e = new Engine();
 
@@ -419,9 +419,10 @@ void Driver::run_driver(int games_to_play, int iterations_per_move, std::string 
 
     // players.push_back(new MonteCarlo(WHITE, e, model_name, iterations_per_move, false,
                         // pSemaphore, pSharedMemory_code, pSharedMemory_rest)); // white
-    players.push_back(new Rand(BLACK, e)); // white
+    // players.push_back(new Rand(BLACK, e)); // black
+    players.push_back(new Minimax(BLACK, e, depth)); // white
     players.push_back(new MonteCarlo(WHITE, e, model_name, iterations_per_move, false, 
-                        pSemaphore, pSharedMemory_code, pSharedMemory_rest)); // black
+                        pSemaphore, pSharedMemory_code, pSharedMemory_rest)); // white
 
     // Variable for the number of moves in the game
     int* num_moves = (int*) calloc(1, sizeof(int));
@@ -475,6 +476,7 @@ int main(int argc, char * argv[])
     int iterations_per_move = -1; 
     int games_to_play = -1;
     std::string model_name = "hurglblrg";
+    int depth = 0;
     int print_on = 0;
 
     for (int i = 0; i < argc; ++i)
@@ -490,6 +492,10 @@ int main(int argc, char * argv[])
         if (strcmp(argv[i], "-name") == 0)
         {
             model_name = argv[i+1];
+        }
+        if (strcmp(argv[i], "-print") == 0)
+        {
+            print_on = atoi(argv[i+1]);
         }
         if (strcmp(argv[i], "-print") == 0)
         {
@@ -514,7 +520,7 @@ int main(int argc, char * argv[])
     srand(time(NULL)); // seed rand
     Driver* p = new Driver();
     
-    p->run_driver(games_to_play, iterations_per_move, model_name, print_on_bool);
+    p->run_driver(games_to_play, iterations_per_move, model_name, print_on_bool, depth);
     
     return 0;
 }
