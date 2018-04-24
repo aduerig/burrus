@@ -7,6 +7,9 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 def main():
     with tf.Session() as sess:
+        np.random.seed(0)
+        tf.set_random_seed(0)
+        
         model_dir = get_model_dir('recent')
         # model_dir = get_model_dir('model_0')
         print('Using model at: ' + model_dir)
@@ -14,7 +17,12 @@ def main():
         batch_size = 1
         data_gen = get_data(batch_size, model_dir)
 
-
+# calced
+# ('neg', 99943)
+# ('pos', 57)
+# true
+# ('neg', 47886)
+# ('pos', 48806)
 
         saver = tf.train.import_meta_graph(os.path.join(model_dir, 'model.ckpt.meta'))
         saver.restore(sess, os.path.join(model_dir, 'model.ckpt'))
@@ -36,11 +44,15 @@ def main():
             print(v)
             print(sess.run(v))
             print('')
+            exit()
 
         print('')
         # print(x_tensor)
 
-        num_batches_to_go = 100
+        all_calced_values = []
+        all_true_values = []
+        num_batches_to_go = 1
+        # to_run = next(data_gen)
         for i in range(num_batches_to_go):
             to_run = next(data_gen)
             curr_batch_x = to_run[0]
@@ -52,16 +64,40 @@ def main():
             policy_calced = res[0]
             value_calced = res[1]
 
-            for j in range(policy_calced.shape[0]):
-                print_board(curr_batch_x[j])
-                
-                print("true values:")
-                print(curr_batch_y_policy_labels[j])
-                print(curr_batch_y_true_value[j])
+            print(curr_batch_y_true_value)
+            print(value_calced)
 
-                print("in pass:")
-                print(policy_calced[j])
-                print(value_calced[j])
+            # for j in range(policy_calced.shape[0]):
+            #     # print_board(curr_batch_x[j])
+                
+            #     # print("true values:")
+            #     # print(curr_batch_y_policy_labels[j])
+            #     # print(curr_batch_y_true_value[j])
+
+            #     # print("in pass:")
+            #     # print(policy_calced[j])
+            #     # print(value_calced[j])
+
+            #     all_true_values.append(curr_batch_y_true_value[j][0])
+            #     all_calced_values.append(value_calced[j][0])
+            
+            # all_true_values.append(curr_batch_y_true_value[0][0])
+            # all_calced_values.append(value_calced[0][0])
+
+
+        print(sorted(all_calced_values))
+
+        print('calced')
+        neg = [i for i in all_calced_values if i < 0]
+        pos = [i for i in all_calced_values if i > 0]
+        print('neg', len(neg))
+        print('pos', len(pos))
+
+        print('true')
+        neg = [i for i in all_true_values if i < 0]
+        pos = [i for i in all_true_values if i > 0]
+        print('neg', len(neg))
+        print('pos', len(pos))
 
 
         # together = np.append(policy_calced, value_calced)
@@ -101,13 +137,15 @@ def get_model_dir(name):
 
 
 def get_inf_batch_gens(data, size):
-    rng_state = np.random.get_state()
-    np.random.shuffle(data[0])
-    np.random.set_state(rng_state)
-    np.random.shuffle(data[1])
-    np.random.set_state(rng_state)
-    np.random.shuffle(data[2])
-    sample_length = len(data[0])
+    # data is deterministic up to here
+
+    # rng_state = np.random.get_state()
+    # np.random.shuffle(data[0])
+    # np.random.set_state(rng_state)
+    # np.random.shuffle(data[1])
+    # np.random.set_state(rng_state)
+    # np.random.shuffle(data[2])
+    sample_length = data[0].shape[0] # 40762
     curr = sample_length
     loop = 0
     while True:
@@ -122,34 +160,16 @@ def get_inf_batch_gens(data, size):
             loop += 1
             continue
         x = data[0][curr:curr+size]
-        y_real = data[1][curr:curr+size]
-        y_imag = data[2][curr:curr+size]
+        q_vals = data[1][curr:curr+size]
+        true_result = data[2][curr:curr+size]
+
+        # print(data[0].shape)
+        # print(x.shape)
+        # exit()
+
+
         curr += size
-        yield x, y_real, y_imag
-
-
-
-def get_data(size, old_model_dir):
-
-    x_train = []
-    y_policy_labels = []
-    y_true_value = []
-    model_count = len(next(os.walk('data'))[1])
-    game_locs = []
-
-    for i in range(max(0, model_count-15), model_count):
-        curr_path = os.path.join('data', 'model_' + str(i), 'games', 'all_games.game')
-        x,y,z = read_in_games(curr_path)
-        x_train += x
-        y_policy_labels += y
-        y_true_value += z
-
-    x_train = np.array(x_train)
-    y_policy_labels = np.array(y_policy_labels)
-    y_true_value = np.array(y_true_value)
-
-    train = [x_train, y_policy_labels, y_true_value]
-    return get_inf_batch_gens(train, size)
+        yield x, q_vals, true_result
 
 def read_in_games(filename):
     boards = []
@@ -200,5 +220,52 @@ def read_in_games(filename):
     print("loaded {0} board states".format(len(boards)))
     return boards, evals, results
 
+
+def get_data(size, old_model_dir):
+    x_train = []
+    y_policy_labels = []
+    y_true_value = []
+    model_count = len(next(os.walk('data'))[1])
+    game_locs = []
+
+    for i in range(max(0, model_count-15), model_count):
+        curr_path = os.path.join('data', 'model_' + str(i), 'games', 'all_games.game')
+        x,y,z = read_in_games(curr_path)
+        x_train += x
+        y_policy_labels += y
+        y_true_value += z
+
+    x_train = np.array(x_train)
+    y_policy_labels = np.array(y_policy_labels)
+    y_true_value = np.array(y_true_value)
+
+    # print(x_train.shape) # (40762, 128)
+    # print(y_policy_labels.shape) # (40762, 64)
+    # print(y_true_value.shape) # (40762, 1)
+    # exit()
+
+    train = [x_train, y_policy_labels, y_true_value]
+    return get_inf_batch_gens(train, size)
+
+
 if __name__ == "__main__":
     main()
+
+
+
+
+# a = np.arange(1, 15)
+# b = np.arange(1, 15)
+# c = np.arange(1, 15)
+
+# rng_state = np.random.get_state()
+# np.random.shuffle(a)
+# np.random.set_state(rng_state)
+# np.random.shuffle(b)
+# np.random.set_state(rng_state)
+# np.random.shuffle(c)
+
+# print(a)
+# print(b)
+# print(c)
+# exit()
