@@ -34,9 +34,9 @@ def main():
         for v in var:
             print(v)
             print(sess.run(v))
-            print()
+            print('')
 
-        print()
+        print('')
         # print(x_tensor)
 
 
@@ -45,9 +45,10 @@ def main():
             curr_batch_x = to_run[0]
             curr_batch_y_policy_labels = to_run[1]
             curr_batch_y_true_value = to_run[2]
+            print_board(curr_batch_x[0])
             
             res = sess.run([policy_head_output, value_head_output], feed_dict={x_tensor: curr_batch_x, train_bool: False})
-            
+            print(res)
             policy_calced = res[0][0]
             value_calced = res[1][0]
             print(policy_calced)
@@ -61,6 +62,20 @@ def main():
         # print(GraphKeys.TRAINABLE_VARIABLES)
 
 
+
+def print_board(b):
+    to_print = []
+    print("BOARD")
+    for i in range(64):
+        if b[i+64] == 1:
+            to_print.append('W')
+        elif b[i] == 1:
+            to_print.append('B')
+        else:
+            to_print.append('-')
+    for i in range(8):
+        print(' '.join(to_print[(i*8):(i*8)+8]))
+    print('')
 
 
 
@@ -166,9 +181,12 @@ def read_in_games(filename):
                 # grabbing final result
                 stripped_line = f.readline().strip()
                 results.append([int(stripped_line)])
-    # print(boards[0])
-    # print(evals[0])
-    # print(results[0])
+    # state = 42
+    # print(filename)
+    # print(boards[state])
+    # print(evals[state])
+    # print(results[state])
+    # print_board(boards[state])
     # exit()
     print("loaded {0} board states".format(len(boards)))
     return boards, evals, results
