@@ -11,7 +11,8 @@ def main():
         # model_dir = get_model_dir('model_0')
         print('Using model at: ' + model_dir)
 
-        data_gen = get_data(1, model_dir)
+        batch_size = 1
+        data_gen = get_data(batch_size, model_dir)
 
 
 
@@ -39,20 +40,28 @@ def main():
         print('')
         # print(x_tensor)
 
-
-        for i in range(1):
+        num_batches_to_go = 100
+        for i in range(num_batches_to_go):
             to_run = next(data_gen)
             curr_batch_x = to_run[0]
             curr_batch_y_policy_labels = to_run[1]
             curr_batch_y_true_value = to_run[2]
-            print_board(curr_batch_x[0])
             
             res = sess.run([policy_head_output, value_head_output], feed_dict={x_tensor: curr_batch_x, train_bool: False})
-            print(res)
-            policy_calced = res[0][0]
-            value_calced = res[1][0]
-            print(policy_calced)
-            print(value_calced)
+
+            policy_calced = res[0]
+            value_calced = res[1]
+
+            for j in range(policy_calced.shape[0]):
+                print_board(curr_batch_x[j])
+                
+                print("true values:")
+                print(curr_batch_y_policy_labels[j])
+                print(curr_batch_y_true_value[j])
+
+                print("in pass:")
+                print(policy_calced[j])
+                print(value_calced[j])
 
 
         # together = np.append(policy_calced, value_calced)
@@ -65,7 +74,7 @@ def main():
 
 def print_board(b):
     to_print = []
-    print("BOARD")
+    print("BOARD, BLACK TO MOVE")
     for i in range(64):
         if b[i+64] == 1:
             to_print.append('W')
