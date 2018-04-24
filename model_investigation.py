@@ -126,13 +126,6 @@ def get_model_dir(name):
 
 def get_inf_batch_gens(data, size):
     # data is deterministic up to here
-
-    # rng_state = np.random.get_state()
-    # np.random.shuffle(data[0])
-    # np.random.set_state(rng_state)
-    # np.random.shuffle(data[1])
-    # np.random.set_state(rng_state)
-    # np.random.shuffle(data[2])
     sample_length = data[0].shape[0] # 40762
     curr = sample_length
     loop = 0

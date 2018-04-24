@@ -194,15 +194,19 @@ def create_policy_head(x, train_bool):
 # generators will loop forever if batch_size > samples, also it has the chance to miss a
 # few samples each iteration, though they all have equal probability, so it shouldnt matter
 def get_inf_batch_gens(data, size):
-    rng_state = np.random.get_state()
-    np.random.shuffle(data[0])
-    np.random.set_state(rng_state)
-    np.random.shuffle(data[1])
-    np.random.set_state(rng_state)
-    np.random.shuffle(data[2])
-    sample_length = len(data[0])
+    # data is deterministic up to here
+    sample_length = data[0].shape[0] # 40762
     curr = sample_length
     loop = 0
+    
+    if size == 0:
+        print("get_inf_batch_gens: cant have batch size 0, quitting")
+        exit(0)
+    
+    if sample_length == 0:
+        print("get_inf_batch_gens: passed 0 samples, quitting")
+        exit(0)
+    
     while True:
         if curr+size > sample_length:
             curr = 0
@@ -215,10 +219,10 @@ def get_inf_batch_gens(data, size):
             loop += 1
             continue
         x = data[0][curr:curr+size]
-        y_real = data[1][curr:curr+size]
-        y_imag = data[2][curr:curr+size]
+        q_vals = data[1][curr:curr+size]
+        true_result = data[2][curr:curr+size]
         curr += size
-        yield x, y_real, y_imag
+        yield x, q_vals, true_result
 
 
 def get_model_directories():
@@ -305,10 +309,6 @@ def read_in_games(filename):
                 # grabbing final result
                 stripped_line = f.readline().strip()
                 results.append([int(stripped_line)])
-    # print(boards[0])
-    # print(evals[0])
-    # print(results[0])
-    # exit()
     print("loaded {0} board states".format(len(boards)))
     return boards, evals, results
 
@@ -367,9 +367,9 @@ def train():
 
 
     # for training batchnorm features
-    extra_update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
-    for i in extra_update_ops:
-        print(i)
+    # extra_update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+    # for i in extra_update_ops:
+    #     print(i)
     # print(extra_update_ops)
 
     # create a saver (could need different arg passed)
