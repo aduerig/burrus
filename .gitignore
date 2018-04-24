@@ -4,3 +4,7 @@
 *.pyc
 
 expect
+
+logs/
+
+data/

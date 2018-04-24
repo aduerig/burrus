@@ -36,7 +36,7 @@ def get_floats():
 
 def write_send_code(mapfile, write_file): # writing correct code back
     mapfile.seek(0)
-    mapfile.write("\x01\x00\x00\x00")
+    mapfile.write(b"\x01\x00\x00\x00")
 
 
 def write_to_memory(mapfile, s):
