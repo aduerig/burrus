@@ -358,16 +358,19 @@ def train():
     # need to add l2 regularization
     total_loss = tf.add(policy_loss, value_loss, name='loss_combined')
 
-    # toptimizer
-    train_step = tf.train.MomentumOptimizer(learning_rate=GLOBAL_LEARNING_RATE, momentum=0.9, name='sgd').minimize(total_loss)
+
+    # for training batchnorm features
+    # https://www.tensorflow.org/api_docs/python/tf/layers/batch_normalization
+    update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+
+    with tf.control_dependencies(update_ops):
+        train_step = tf.train.MomentumOptimizer(learning_rate=GLOBAL_LEARNING_RATE, momentum=0.9, name='sgd').minimize(total_loss)
+    
     correct_policy_prediction = tf.equal(tf.argmax(y_policy_labels, 1), tf.argmax(policy_head, 1))
     accuracy_policy = tf.reduce_mean(tf.cast(correct_policy_prediction, tf.float32))
     accuracy_value = tf.reduce_mean(tf.abs(value_head - y_true_value))
 
 
-
-    # for training batchnorm features
-    # extra_update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
     # for i in extra_update_ops:
     #     print(i)
     # print(extra_update_ops)
@@ -375,7 +378,7 @@ def train():
     # create a saver (could need different arg passed)
     # tf.trainable_variables() + extra_update_ops
 
-    
+
     # with tf.control_dependencies(tf.get_collection(tf.GraphKeys.UPDATE_OPS)): # unsure if need
     saver = tf.train.Saver()
 
@@ -415,7 +418,7 @@ def train():
                             train_bool: True})
                 print('step {0}, training accuracy_policy {1}, training accuracy_value {2}'.format(i, 
                             a_p, a_v))
-            sess.run([train_step, extra_update_ops], feed_dict={x: curr_batch_x, 
+            sess.run([train_step], feed_dict={x: curr_batch_x, 
                             y_policy_labels: curr_batch_y_policy_labels, 
                             y_true_value: curr_batch_y_true_value,
                             train_bool: True})
