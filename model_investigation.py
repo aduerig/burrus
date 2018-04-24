@@ -25,8 +25,6 @@ def main():
 # ('pos', 48806)
 
         saver = tf.train.import_meta_graph(os.path.join(model_dir, 'model.ckpt.meta'))
-        saver.restore(sess, os.path.join(model_dir, 'model.ckpt'))
-
         graph = tf.get_default_graph()
 
         x_tensor = graph.get_tensor_by_name('x:0')
@@ -34,7 +32,8 @@ def main():
         value_head_output = graph.get_tensor_by_name('value_head_output:0')
         policy_head_output = graph.get_tensor_by_name('policy_head_output/BiasAdd:0')
 
-        sess.run(tf.global_variables_initializer())
+        saver.restore(sess, os.path.join(model_dir, 'model.ckpt'))
+        # sess.run(tf.global_variables_initializer())
 
 
 
@@ -44,10 +43,7 @@ def main():
             print(v)
             print(sess.run(v))
             print('')
-            exit()
-
         print('')
-        # print(x_tensor)
 
         all_calced_values = []
         all_true_values = []
@@ -166,7 +162,7 @@ def get_inf_batch_gens(data, size):
         # print(data[0].shape)
         # print(x.shape)
         # exit()
-
+# files are 400kb
 
         curr += size
         yield x, q_vals, true_result
