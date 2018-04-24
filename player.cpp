@@ -688,7 +688,7 @@ void MonteCarlo::expand_node(Node* node, int* move_list)
 void MonteCarlo::backup_stats(Node* node)
 {
     float newer_value = node->value;
-    int inverter = -1;
+    int inverter = 1;
     while(node != curr_root)
     {
         node->visits++;

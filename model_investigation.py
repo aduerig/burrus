@@ -17,13 +17,6 @@ def main():
         batch_size = 1
         data_gen = get_data(batch_size, model_dir)
 
-# calced
-# ('neg', 99943)
-# ('pos', 57)
-# true
-# ('neg', 47886)
-# ('pos', 48806)
-
         saver = tf.train.import_meta_graph(os.path.join(model_dir, 'model.ckpt.meta'))
         graph = tf.get_default_graph()
 
@@ -34,7 +27,6 @@ def main():
 
         saver.restore(sess, os.path.join(model_dir, 'model.ckpt'))
         # sess.run(tf.global_variables_initializer())
-
 
 
         var = tf.trainable_variables()
@@ -63,19 +55,19 @@ def main():
             print(curr_batch_y_true_value)
             print(value_calced)
 
-            # for j in range(policy_calced.shape[0]):
-            #     # print_board(curr_batch_x[j])
+            for j in range(policy_calced.shape[0]):
+                print_board(curr_batch_x[j])
                 
-            #     # print("true values:")
-            #     # print(curr_batch_y_policy_labels[j])
-            #     # print(curr_batch_y_true_value[j])
+                print("true values:")
+                print(curr_batch_y_policy_labels[j])
+                print(curr_batch_y_true_value[j])
 
-            #     # print("in pass:")
-            #     # print(policy_calced[j])
-            #     # print(value_calced[j])
+                print("in pass:")
+                print(policy_calced[j])
+                print(value_calced[j])
 
-            #     all_true_values.append(curr_batch_y_true_value[j][0])
-            #     all_calced_values.append(value_calced[j][0])
+                all_true_values.append(curr_batch_y_true_value[j][0])
+                all_calced_values.append(value_calced[j][0])
             
             # all_true_values.append(curr_batch_y_true_value[0][0])
             # all_calced_values.append(value_calced[0][0])
@@ -158,12 +150,6 @@ def get_inf_batch_gens(data, size):
         x = data[0][curr:curr+size]
         q_vals = data[1][curr:curr+size]
         true_result = data[2][curr:curr+size]
-
-        # print(data[0].shape)
-        # print(x.shape)
-        # exit()
-# files are 400kb
-
         curr += size
         yield x, q_vals, true_result
 

@@ -112,8 +112,6 @@ def serve_requests(memory, semaphore, mapfile, MODEL_NAME, write_file):
         write_file.write('Using model at: {0}\n'.format(MODEL_PATH))
 
         saver = tf.train.import_meta_graph(os.path.join(MODEL_PATH, 'model.ckpt.meta'))
-        saver.restore(sess, os.path.join(MODEL_PATH, 'model.ckpt'))
-
         graph = tf.get_default_graph()
 
         x_tensor = graph.get_tensor_by_name('x:0')
@@ -121,7 +119,7 @@ def serve_requests(memory, semaphore, mapfile, MODEL_NAME, write_file):
         value_head_output = graph.get_tensor_by_name('value_head_output:0')
         policy_head_output = graph.get_tensor_by_name('policy_head_output/BiasAdd:0')
 
-        sess.run(tf.global_variables_initializer())
+        saver.restore(sess, os.path.join(MODEL_PATH, 'model.ckpt'))
         
         requests_served = 0
         while True: # serving loop
