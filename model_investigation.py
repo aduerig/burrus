@@ -28,14 +28,20 @@ def main():
         saver.restore(sess, os.path.join(model_dir, 'model.ckpt'))
         # sess.run(tf.global_variables_initializer())
 
-
+        updaters = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
         var = tf.trainable_variables()
+
+        for v in updaters:
+            print(v)
+            print('')
 
         for v in var:
             print(v)
             print(sess.run(v))
             print('')
         print('')
+
+        # exit()
 
         all_calced_values = []
         all_true_values = []
@@ -129,6 +135,15 @@ def get_inf_batch_gens(data, size):
     sample_length = data[0].shape[0] # 40762
     curr = sample_length
     loop = 0
+
+    if size == 0:
+        print("get_inf_batch_gens: cant have batch size 0, quitting")
+        exit(0)
+    
+    if sample_length == 0:
+        print("get_inf_batch_gens: passed 0 samples, quitting")
+        exit(0)
+    
     while True:
         if curr+size > sample_length:
             curr = 0

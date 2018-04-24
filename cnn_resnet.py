@@ -10,7 +10,7 @@ import random
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
 
-GLOBAL_LEARNING_RATE = .1
+GLOBAL_LEARNING_RATE = .001
 GLOBAL_TRAINING_STEPS = 1000
 GLOBAL_BATCH_SIZE = 128
 
@@ -335,29 +335,42 @@ def train():
 
     # logits and labels must have the same shape, e.g. [batch_size, num_classes] and the same dtype (either float16, float32, or float64).
     # policy head loss
-    policy_loss = tf.losses.softmax_cross_entropy(
-            y_policy_labels, # labels
-            policy_head, # logits
-            weights=.5,
-            label_smoothing=0,
-            loss_collection=tf.GraphKeys.LOSSES,
-            reduction=tf.losses.Reduction.SUM_BY_NONZERO_WEIGHTS)
+    # policy_loss = tf.losses.softmax_cross_entropy(
+    #         y_policy_labels, # labels
+    #         policy_head, # logits
+    #         weights=.5,
+    #         label_smoothing=0,
+    #         loss_collection=tf.GraphKeys.LOSSES,
+    #         reduction=tf.losses.Reduction.SUM_BY_NONZERO_WEIGHTS)
 
 
-    # value head loss
-    value_loss = tf.losses.mean_squared_error(
-            y_true_value, # label
-            value_head, # prediction
-            weights=1.0,
-            scope=None,
-            loss_collection=tf.GraphKeys.LOSSES,
-            reduction=tf.losses.Reduction.SUM_BY_NONZERO_WEIGHTS)
+    # # value head loss
+    # value_loss = tf.losses.mean_squared_error(
+    #         y_true_value, # label
+    #         value_head, # prediction
+    #         weights=1.0,
+    #         scope=None,
+    #         loss_collection=tf.GraphKeys.LOSSES,
+    #         reduction=tf.losses.Reduction.SUM_BY_NONZERO_WEIGHTS)
 
 
-    # combine
-    # need to add l2 regularization
-    total_loss = tf.add(policy_loss, value_loss, name='loss_combined')
+    # # combine
+    # # need to add l2 regularization
+    # total_loss = tf.add(policy_loss, value_loss, name='loss_combined')
 
+    # Alternative loss method  
+    cross_entropy = tf.nn.softmax_cross_entropy_with_logits(labels=y_policy_labels, logits=policy_head)
+    policy_loss = tf.reduce_mean(cross_entropy)
+
+    value_loss = tf.reduce_mean(tf.squared_difference(y_true_value, value_head))
+
+
+    regularizer = tf.contrib.layers.l2_regularizer(scale=0.0001)
+    trainables = tf.trainable_variables()
+    reg_term = tf.contrib.layers.apply_regularization(regularizer, trainables)
+
+
+    total_loss = .5 * policy_loss + .5 * value_loss + reg_term
 
     # for training batchnorm features
     # https://www.tensorflow.org/api_docs/python/tf/layers/batch_normalization
@@ -379,27 +392,24 @@ def train():
     # tf.trainable_variables() + extra_update_ops
 
 
-    # with tf.control_dependencies(tf.get_collection(tf.GraphKeys.UPDATE_OPS)): # unsure if need
-    saver = tf.train.Saver()
 
-    # initialize the graph
-    init = tf.global_variables_initializer()
+
+    saver = tf.train.Saver()
 
     # training
     with tf.Session(config=tf.ConfigProto()) as sess:
-        sess.run(init)
-
         old_model_dir, new_model_dir = get_model_directories()
         # No data exists, save random weights to be used in datagen
         if old_model_dir == None:
             os.mkdir(new_model_dir)
             os.mkdir(os.path.join(new_model_dir, 'games'))
             print(new_model_dir)
+            sess.run(tf.global_variables_initializer())
             saver.save(sess, os.path.join(new_model_dir, 'model.ckpt'))
             return 1
             
         saver.restore(sess, os.path.join(old_model_dir, 'model.ckpt'))
-        train_batch_gen= get_data(GLOBAL_BATCH_SIZE, old_model_dir)
+        train_batch_gen = get_data(GLOBAL_BATCH_SIZE, old_model_dir)
         if train_batch_gen is None:
             print("No games found, exiting...")
             return -1
@@ -418,10 +428,11 @@ def train():
                             train_bool: True})
                 print('step {0}, training accuracy_policy {1}, training accuracy_value {2}'.format(i, 
                             a_p, a_v))
-            sess.run([train_step], feed_dict={x: curr_batch_x, 
+            _, resultant = sess.run([train_step, policy_head], feed_dict={x: curr_batch_x, 
                             y_policy_labels: curr_batch_y_policy_labels, 
                             y_true_value: curr_batch_y_true_value,
                             train_bool: True})
+            print(resultant)
 
             if i % 20000:
                 pass
