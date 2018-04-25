@@ -10,9 +10,9 @@ import random
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
 
-GLOBAL_LEARNING_RATE = .001
+GLOBAL_LEARNING_RATE = .01
 GLOBAL_TRAINING_STEPS = 1000
-GLOBAL_BATCH_SIZE = 128
+GLOBAL_BATCH_SIZE = 32
 
 MODELS_DIRECTORY = 'data'
 
@@ -39,9 +39,6 @@ MODELS_DIRECTORY = 'data'
 #       (probably will always not be since infrence will be run in c++, not this model)
 def cnn_block(x, train_bool, block_num):
     # x = tf.reshape(x, [-1, 8, 8, 2])
-    x = tf.reshape(x, [-1, 8, 8, 2]) # trying out a different reshape
-
-
     block_num = str(block_num)
     # conv
     conv_layer = tf.layers.conv2d(
@@ -56,7 +53,7 @@ def cnn_block(x, train_bool, block_num):
     conv_bn_layer = tf.layers.batch_normalization(
         inputs=conv_layer,
         axis=-1,
-        momentum=0.9,
+        momentum=0.99,
         epsilon=0.001,
         center=True,
         scale=True,
@@ -69,6 +66,7 @@ def cnn_block(x, train_bool, block_num):
     return relu
 
 def resid_block(x, train_bool, block_num):
+    orig = tf.identity(x)
     block_num = str(block_num)
     # conv
     conv_layer = tf.layers.conv2d(
@@ -83,7 +81,7 @@ def resid_block(x, train_bool, block_num):
     conv_bn_layer = tf.layers.batch_normalization(
         inputs=conv_layer,
         axis=-1,
-        momentum=0.9,
+        momentum=0.99,
         epsilon=0.001,
         center=True,
         scale=True,
@@ -106,7 +104,7 @@ def resid_block(x, train_bool, block_num):
     conv2_bn_layer = tf.layers.batch_normalization(
         inputs=conv2_layer,
         axis=-1,
-        momentum=0.9,
+        momentum=0.99,
         epsilon=0.001,
         center=True,
         scale=True,
@@ -114,7 +112,7 @@ def resid_block(x, train_bool, block_num):
         name='resid_block_' + block_num + '_conv2_bn_layer')
 
     # residual
-    resid_connection = tf.add(conv2_bn_layer, x, name='resid_block_resid_connection')
+    resid_connection = tf.add(conv2_bn_layer, orig, name='resid_block_resid_connection')
 
     # final relu
     final_relu = tf.nn.relu(resid_connection, name='resid_block_relu')
@@ -136,7 +134,7 @@ def create_value_head(x, train_bool):
     conv_bn_layer = tf.layers.batch_normalization(
         inputs=conv_layer,
         axis=-1,
-        momentum=0.9,
+        momentum=0.99,
         epsilon=0.001,
         center=True,
         scale=True,
@@ -174,7 +172,7 @@ def create_policy_head(x, train_bool):
     conv_bn_layer = tf.layers.batch_normalization(
         inputs=conv_layer,
         axis=-1,
-        momentum=0.9,
+        momentum=0.99,
         epsilon=0.001,
         center=True,
         scale=True,
@@ -246,7 +244,6 @@ def get_model_directories():
 
 
 def get_data(size, old_model_dir):
-
     x_train = []
     y_policy_labels = []
     y_true_value = []
@@ -268,7 +265,7 @@ def get_data(size, old_model_dir):
     return get_inf_batch_gens(train, size)
 
 def bitfield(n):
-    return [n >> i & 1 for i in range(63,-1,-1)]
+    return [n >> i & 1 for i in range(63, -1, -1)]
 
 def read_in_games(filename):
     boards = []
@@ -320,7 +317,9 @@ def train():
     y_policy_labels = tf.placeholder(tf.float32, shape=(None, 64), name='y_policy_labels')
     y_true_value = tf.placeholder(tf.float32, shape=(None, 1), name='y_true_value')
 
-    conv_block = cnn_block(x, train_bool, 0)
+    x_reshaped = tf.reshape(x, [-1, 8, 8, 2]) # trying out a different reshape
+
+    conv_block = cnn_block(x_reshaped, train_bool, 0)
 
     # stacking 10 residual blocks
     resid_input = conv_block
@@ -362,6 +361,8 @@ def train():
     cross_entropy = tf.nn.softmax_cross_entropy_with_logits(labels=y_policy_labels, logits=policy_head)
     policy_loss = tf.reduce_mean(cross_entropy)
 
+    # policy_loss = tf.nn.softmax_cross_entropy_with_logits(labels=y_policy_labels, logits=policy_head)
+
     value_loss = tf.reduce_mean(tf.squared_difference(y_true_value, value_head))
 
 
@@ -370,7 +371,9 @@ def train():
     reg_term = tf.contrib.layers.apply_regularization(regularizer, trainables)
 
 
-    total_loss = .5 * policy_loss + .5 * value_loss + reg_term
+    # total_loss = .5 * policy_loss + .5 * value_loss + reg_term
+    # total_loss = .5 * value_loss + reg_term
+    total_loss = .5 * policy_loss + reg_term
 
     # for training batchnorm features
     # https://www.tensorflow.org/api_docs/python/tf/layers/batch_normalization
@@ -409,6 +412,7 @@ def train():
             return 1
             
         saver.restore(sess, os.path.join(old_model_dir, 'model.ckpt'))
+        sess.run(tf.global_variables_initializer())
         train_batch_gen = get_data(GLOBAL_BATCH_SIZE, old_model_dir)
         if train_batch_gen is None:
             print("No games found, exiting...")
@@ -428,14 +432,25 @@ def train():
                             train_bool: True})
                 print('step {0}, training accuracy_policy {1}, training accuracy_value {2}'.format(i, 
                             a_p, a_v))
-            _, resultant = sess.run([train_step, policy_head], feed_dict={x: curr_batch_x, 
+            _, p_res, v_res = sess.run([train_step, policy_head, value_head], feed_dict={x: curr_batch_x, 
                             y_policy_labels: curr_batch_y_policy_labels, 
                             y_true_value: curr_batch_y_true_value,
                             train_bool: True})
-            print(resultant)
 
-            if i % 20000:
-                pass
+            # print(v_res)
+
+
+            # if i > 900:
+            #     exit()
+
+            # policy
+            # print(p_res)
+            # total = 0
+            # for o in p_res:
+            #     for j in o:
+            #         if j < 0:
+            #             total += 1
+            # print(64 * GLOBAL_BATCH_SIZE, total)
 
         os.mkdir(new_model_dir)
         os.mkdir(os.path.join(new_model_dir, 'games'))

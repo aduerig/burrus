@@ -369,7 +369,7 @@ MonteCarlo::MonteCarlo(int col, Engine* engine, std::string m_path, int sims, bo
     max_sims = sims;
     curr_root = NULL;
     is_training = training;
-    saved_q = (float*) malloc(64 * sizeof(float));
+    saved_action_probs = (float*) malloc(64 * sizeof(float));
     print_on = false;
     explore_constant = 1;
     node_storage_counter = 0;
@@ -388,6 +388,8 @@ MonteCarlo::MonteCarlo(int col, Engine* engine, std::string m_path, int sims, bo
     pSharedMemory_rest = pSem_rest;
 
     no_decision = 0;
+
+    temperature = 1;
 }
 
 
@@ -501,20 +503,8 @@ int MonteCarlo::move(int* move_list)
         curr_sim++;
     }
 
-    if (is_training) // saving training data
-    {
-        if(print_on) printf("\nSAVING saved_q AND saved_value\n\n");
-        for(int i = 0; i < 64; i++)
-        {
-            saved_q[i] = 0;
-        }
-        for(int i = 0; i < root->num_children; i++)
-        {
-            Node* iter_child = root->children_nodes + i;
-            saved_q[iter_child->move] = iter_child->calced_q;
-        }
-        saved_value = root->value;
-    }
+    calc_action_probs(root);
+    saved_value = root->value;
 
     // printf("\nroot info\n");
     // printf("my board:    %llu\n", e->get_color(color));
@@ -529,7 +519,7 @@ int MonteCarlo::move(int* move_list)
     // }
     // printf("\n");
 
-    // printf("saved_q\n")
+    // printf("saved_action_probs\n")
 
     // exit(0);
 
@@ -539,7 +529,7 @@ int MonteCarlo::move(int* move_list)
     if(print_on) print_node_info(best_node);
     if(print_on) printf("\n");
 
-    // if(print_on) print_best_graph(root);
+    if(print_on) print_best_graph(root);
     if(print_on) print_all_subnodes(root);
 
     if(print_on) printf("deleting all nodes saved\n");
@@ -749,6 +739,50 @@ float MonteCarlo::compute_puct(Node* node)
     return (color_multiplier(node->parent_node->color) * node->calced_q) + u_val;
 }
 
+// assumes 1 node exists
+int MonteCarlo::node_argmax(Node* node, int num_nodes)
+{
+    int best_index = 0;
+    int best_score = (node + best_index)->visits;
+    for(int i = 1; i < num_nodes; i++)
+    {
+        int num_visits = (node + i)->visits;
+        if(num_visits > best_score)
+        {
+            best_index = i;
+            best_score = num_visits;
+        }
+    }
+    return best_index;
+}
+
+void MonteCarlo::calc_action_probs(Node* node)
+{
+    memset(saved_action_probs, 0, 64 * sizeof(float));
+
+    if(temperature == 0)
+    {
+        int best_index = node_argmax(node->children_nodes, node->num_children);
+        saved_action_probs[node->children_nodes[best_index].move] = 1;
+        return;
+    }
+
+    float sum = 0;
+    Node* child;
+    for(int i = 0; i < node->num_children; i++)
+    {
+        child = node->children_nodes + i;
+        float calculation = pow(child->visits, 1.0 / temperature);
+        sum += calculation;
+        saved_action_probs[child->move] = calculation;
+    }
+
+    for(int i = 0; i < node->num_children; i++)
+    {
+        child = node->children_nodes + i;
+        saved_action_probs[child->move] = saved_action_probs[child->move] / sum;
+    }
+}
 
 void MonteCarlo::cleanup()
 {
@@ -1020,53 +1054,13 @@ void MonteCarlo::print_all_subnodes_helper(Node* node, int depth)
 // saver functions
 
 // always will be 64 in length
-float* MonteCarlo::get_saved_q()
+float* MonteCarlo::get_saved_action_probs()
 {
-    if(!is_training)
-    {
-        printf("Cannot call get_saved_q() if the montecarlo player was not instaniated with training on! Exiting...\n");
-        exit(0);
-    }
-    return saved_q;
+    return saved_action_probs;
 }
 
 // the value return
 float MonteCarlo::get_saved_value()
 {
-    if(!is_training)
-    {
-        printf("Cannot call get_saved_value() if the montecarlo player was not instaniated with training on! Exiting...\n");
-        exit(0);
-    }
     return saved_value;
 }
-
-
-
-// def monte_carlo_tree_search(root):
-//     while resources_left(time, computational power):
-//         leaf = traverse(root) # leaf = unvisited node 
-//         simulation_result = rollout(leaf)
-//         backpropagate(leaf, simulation_result)
-//     return best_child(root)
-
-// def traverse(node):
-//     while fully_expanded(node):
-//         node = best_uct(node)
-//     return pick_univisted(node.children) or node # in case no children are PREsent / node is terminal 
-
-// def rollout(node):
-//     while non_terminal(node):
-//         node = rollout_policy(node)
-//     return result(node) 
-
-// def rollout_policy(node):
-//     return pick_random(node.children)
-
-// def backpropagate(node, result):
-//    if is_root(node) return 
-//    node.stats = update_stats(node, result) 
-//    backpropagate(node.parent)
-
-// def best_child(node):
-//     pick child with highest number of visits

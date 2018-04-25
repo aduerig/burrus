@@ -24,6 +24,7 @@
 #include <unistd.h>
 #include <vector>
 #include <random>
+#include <math.h>
 
 // typedef int (*foo_ptr_t)( int );
 typedef void (*fp)(int);
@@ -119,6 +120,8 @@ class MonteCarlo: public Player
         Node* max_child_puct(Node* node);
         Node* max_child_visits(Node* node);
         float compute_puct(Node* node);
+        int node_argmax(Node* node, int num_nodes);
+        void calc_action_probs(Node* node);
         void cleanup();
 
         // model and communication
@@ -127,7 +130,6 @@ class MonteCarlo: public Player
         void fill_random_ints(int* ints_to_fill, int num_ints);
         int acquire_semaphore(sem_t *pSemaphore);
         int release_semaphore(sem_t *pSemaphore); 
-
         void add_dirichlet_noise(float epsilon, float alpha);
 
         // temporary funcs
@@ -146,7 +148,7 @@ class MonteCarlo: public Player
         void print_all_subnodes_helper(Node* node, int depth);
 
         // saver funcs
-        float* get_saved_q();
+        float* get_saved_action_probs();
         float get_saved_value();
 
         int no_decision;
@@ -164,7 +166,7 @@ class MonteCarlo: public Player
         bool is_training;
         float explore_constant;
         float saved_value;
-        float* saved_q;
+        float* saved_action_probs;
         bool print_on;
 
         // communication variables
@@ -184,6 +186,8 @@ class MonteCarlo: public Player
 
         int32_t* int_arr_sender;
         float* float_arr_reciever;
+
+        int temperature;
     };
 
 

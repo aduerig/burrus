@@ -318,7 +318,7 @@ int Params::play_game(Engine* e, std::vector<MonteCarlo*> players, int* num_move
         
         MC_chances[num_moves[0]] = (float *) calloc(64, sizeof(float));
         total_MC_chances[0]++;
-        MCc = players[BLACK]->get_saved_q(); // When players was std::vector<Players *>, this errors
+        MCc = players[BLACK]->get_saved_action_probs(); // When players was std::vector<Players *>, this errors
         for (int i = 0; i < 64; ++i) 
         { 
             MC_chances[num_moves[0]][i] = MCc[i]; 
@@ -345,7 +345,7 @@ int Params::play_game(Engine* e, std::vector<MonteCarlo*> players, int* num_move
         if (print_on && num_moves[0] == 51) printf("move number %i\n", num_moves[0]);
         if (print_on && num_moves[0] == 51) e->print_char();
         MC_chances[num_moves[0]] = (float *) calloc(64, sizeof(float));
-        MCc = players[WHITE]->get_saved_q();
+        MCc = players[WHITE]->get_saved_action_probs();
         for (int i = 0; i < 64; ++i) 
         { 
             MC_chances[num_moves[0]][i] = MCc[i]; 
@@ -619,16 +619,16 @@ void Params::run_params(int local_rank, int games_per_proc, int iterations_per_m
     // Make the two players for the next game
     // I had to change this to MonteCarlo* instead of Player* 
     // because if it was Player*, then when I want to call
-    // get_saved_q() in the play_game function,
+    // get_saved_action_probs() in the play_game function,
     // the compiler complains
 
     /*
     param.cpp: In function ‘int play_game(Engine*, std::vector<Player*>, int*, float**)’:
-    param.cpp:216:31: error: ‘class Player’ has no member named ‘get_saved_q’
-                     MCc = players[BLACK]->get_saved_q();
+    param.cpp:216:31: error: ‘class Player’ has no member named ‘get_saved_action_probs’
+                     MCc = players[BLACK]->get_saved_action_probs();
                                                                  ^
-    param.cpp:227:31: error: ‘class Player’ has no member named ‘get_saved_q’
-                     MCc = players[WHITE]->get_saved_q();
+    param.cpp:227:31: error: ‘class Player’ has no member named ‘get_saved_action_probs’
+                     MCc = players[WHITE]->get_saved_action_probs();
                                                                  ^
     make: *** [param] Error 1
     */
