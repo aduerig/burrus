@@ -373,7 +373,7 @@ def train():
 
     # total_loss = .5 * policy_loss + .5 * value_loss + reg_term
     # total_loss = .5 * value_loss + reg_term
-    total_loss = .5 * policy_loss + reg_term
+    total_loss = .5 * value_loss + .5 * policy_loss + reg_term
 
     # for training batchnorm features
     # https://www.tensorflow.org/api_docs/python/tf/layers/batch_normalization
@@ -437,12 +437,6 @@ def train():
                             y_true_value: curr_batch_y_true_value,
                             train_bool: True})
 
-            # print(v_res)
-
-
-            # if i > 900:
-            #     exit()
-
             # policy
             # print(p_res)
             # total = 0
@@ -464,7 +458,7 @@ def concat_files():
     model_count = len(next(os.walk(MODELS_DIRECTORY))[1])-1
     latest_model_path = 'model_' + str(model_count)
     path = os.path.join(MODELS_DIRECTORY, latest_model_path, 'games')
-    if not os.path.isdir(path) or len(os.listdir(path)) == 0::
+    if not os.path.isdir(path) or len(os.listdir(path)) == 0:
         return
     if os.path.exists(os.path.join(path, out_filename)):
         return
