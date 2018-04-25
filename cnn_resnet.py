@@ -10,8 +10,8 @@ import random
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
 
-GLOBAL_LEARNING_RATE = .01
-GLOBAL_TRAINING_STEPS = 1000
+GLOBAL_LEARNING_RATE = .1
+GLOBAL_TRAINING_STEPS = 101
 GLOBAL_BATCH_SIZE = 32
 
 MODELS_DIRECTORY = 'data'
@@ -373,7 +373,7 @@ def train():
 
     # total_loss = .5 * policy_loss + .5 * value_loss + reg_term
     # total_loss = .5 * value_loss + reg_term
-    total_loss = .5 * value_loss + .5 * policy_loss + reg_term
+    total_loss = .01 * value_loss + policy_loss + reg_term
 
     # for training batchnorm features
     # https://www.tensorflow.org/api_docs/python/tf/layers/batch_normalization
@@ -412,7 +412,6 @@ def train():
             return 1
             
         saver.restore(sess, os.path.join(old_model_dir, 'model.ckpt'))
-        sess.run(tf.global_variables_initializer())
         train_batch_gen = get_data(GLOBAL_BATCH_SIZE, old_model_dir)
         if train_batch_gen is None:
             print("No games found, exiting...")

@@ -475,7 +475,7 @@ int Params::destroy_communication()
     // Announce for one last time that the semaphore is free again so that python can quit
     printf("Final release of the semaphore and send_code followed by a 5 second pause\n"); 
     rc = release_semaphore(pSemaphore);
-    sleep(5); // race condition, where the python takes 5 seconds to quit
+    sleep(1); // race condition, where the python takes 1 seconds to quit
 
     printf("Final wait to acquire the semaphore\n"); 
     rc = acquire_semaphore(pSemaphore);

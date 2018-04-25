@@ -7,14 +7,14 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 def main():
     with tf.Session() as sess:
-        np.random.seed(0)
-        tf.set_random_seed(0)
+        # np.random.seed(0)
+        # tf.set_random_seed(0)
         
         model_dir = get_model_dir('recent')
         # model_dir = get_model_dir('model_0')
         print('Using model at: ' + model_dir)
 
-        batch_size = 1
+        batch_size = 5
         data_gen = get_data(batch_size, model_dir)
 
         saver = tf.train.import_meta_graph(os.path.join(model_dir, 'model.ckpt.meta'))
@@ -41,6 +41,7 @@ def main():
             print('')
         print('')
 
+
         # exit()
 
         all_calced_values = []
@@ -58,6 +59,10 @@ def main():
             policy_calced = res[0]
             value_calced = res[1]
 
+            # print(policy_calced)
+            # print(value_calced)
+            # exit()
+
             print(curr_batch_y_true_value)
             print(value_calced)
 
@@ -72,26 +77,26 @@ def main():
                 print(policy_calced[j])
                 print(value_calced[j])
 
-                all_true_values.append(curr_batch_y_true_value[j][0])
-                all_calced_values.append(value_calced[j][0])
+                # all_true_values.append(curr_batch_y_true_value[j][0])
+                # all_calced_values.append(value_calced[j][0])
             
             # all_true_values.append(curr_batch_y_true_value[0][0])
             # all_calced_values.append(value_calced[0][0])
 
 
-        print(sorted(all_calced_values))
+        # print(sorted(all_calced_values))
 
-        print('calced')
-        neg = [i for i in all_calced_values if i < 0]
-        pos = [i for i in all_calced_values if i > 0]
-        print('neg', len(neg))
-        print('pos', len(pos))
+        # print('calced')
+        # neg = [i for i in all_calced_values if i < 0]
+        # pos = [i for i in all_calced_values if i > 0]
+        # print('neg', len(neg))
+        # print('pos', len(pos))
 
-        print('true')
-        neg = [i for i in all_true_values if i < 0]
-        pos = [i for i in all_true_values if i > 0]
-        print('neg', len(neg))
-        print('pos', len(pos))
+        # print('true')
+        # neg = [i for i in all_true_values if i < 0]
+        # pos = [i for i in all_true_values if i > 0]
+        # print('neg', len(neg))
+        # print('pos', len(pos))
 
 
         # together = np.append(policy_calced, value_calced)

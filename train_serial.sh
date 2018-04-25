@@ -13,6 +13,6 @@ while :
 do
 python cnn_resnet.py
 sleep 1
-./param_serial -rank 0 -ngames 20
+./param_serial -rank 0 -ngames 60
 sleep 1
 done
