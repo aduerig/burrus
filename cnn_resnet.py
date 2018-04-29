@@ -10,7 +10,7 @@ import random
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
 
-GLOBAL_LEARNING_RATE = .1
+GLOBAL_LEARNING_RATE = .001
 GLOBAL_TRAINING_STEPS = 101
 GLOBAL_BATCH_SIZE = 32
 
@@ -184,9 +184,11 @@ def create_policy_head(x, train_bool):
 
     flattened_policy = tf.reshape(relu, [-1, 2 * 8 * 8])
 
-    move_space = tf.layers.dense(inputs=flattened_policy, units = 64, name='policy_head_output') # only 64 possible moves, no activation
+    move_space = tf.layers.dense(inputs=flattened_policy, units = 64, name='policy_head_dense') # only 64 possible moves, no activation
 
-    return move_space
+    softmaxed_move_space = tf.nn.softmax(move_space, name='policy_head_output')
+
+    return softmaxed_move_space
 
 
 # generators will loop forever if batch_size > samples, also it has the chance to miss a
@@ -357,12 +359,13 @@ def train():
     # # need to add l2 regularization
     # total_loss = tf.add(policy_loss, value_loss, name='loss_combined')
 
-    # Alternative loss method  
-    cross_entropy = tf.nn.softmax_cross_entropy_with_logits(labels=y_policy_labels, logits=policy_head)
-    policy_loss = tf.reduce_mean(cross_entropy)
 
     # policy_loss = tf.nn.softmax_cross_entropy_with_logits(labels=y_policy_labels, logits=policy_head)
+    # Alternative loss method  
+    # cross_entropy = tf.nn.softmax_cross_entropy_with_logits(labels=y_policy_labels, logits=policy_head)
+    # policy_loss = tf.reduce_mean(cross_entropy)
 
+    policy_loss = tf.losses.softmax_cross_entropy(y_policy_labels, policy_head)
     value_loss = tf.reduce_mean(tf.squared_difference(y_true_value, value_head))
 
 
@@ -373,7 +376,8 @@ def train():
 
     # total_loss = .5 * policy_loss + .5 * value_loss + reg_term
     # total_loss = .5 * value_loss + reg_term
-    total_loss = .01 * value_loss + policy_loss + reg_term
+    # total_loss = .01 * value_loss + policy_loss + reg_term
+    total_loss = value_loss + policy_loss + reg_term
 
     # for training batchnorm features
     # https://www.tensorflow.org/api_docs/python/tf/layers/batch_normalization

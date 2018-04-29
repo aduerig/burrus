@@ -186,6 +186,7 @@ class MonteCarlo: public Player
 
         int32_t* int_arr_sender;
         float* float_arr_reciever;
+        float* scaled_probabilities;
 
         int temperature;
     };

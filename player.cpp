@@ -380,6 +380,7 @@ MonteCarlo::MonteCarlo(int col, Engine* engine, std::string m_path, int sims, bo
 
     int_arr_sender = (int32_t*) malloc(num_ints_send * sizeof(int32_t));
     float_arr_reciever = (float*) malloc(num_floats_recieve * sizeof(float));
+    scaled_probabilities = (float*) malloc(64 * sizeof(float));
 
     send_code = -1;
 
@@ -479,7 +480,7 @@ int MonteCarlo::move(int* move_list)
     //     add_dirichlet_noise
     // }
 
-    float alpha = .2;
+    float alpha = .03;
     add_dirichlet_noise(0.25f, alpha);
 
     // printf("value of root%f\n", curr_root->value);
@@ -503,7 +504,7 @@ int MonteCarlo::move(int* move_list)
         curr_sim++;
     }
 
-    calc_action_probs(root);
+    calc_action_probs(root); // calculates probability of all moves (based on n)
     saved_value = root->value;
 
     // printf("\nroot info\n");
@@ -519,7 +520,7 @@ int MonteCarlo::move(int* move_list)
     // }
     // printf("\n");
 
-    // printf("saved_action_probs\n")
+    // printf("saved_action_probs\n");
 
     // exit(0);
 
@@ -603,10 +604,6 @@ void MonteCarlo::expand_node(Node* node, int* move_list)
         // run network here to get policies for children, and value (needed for next line)
         send_and_recieve_model_data(node->color);
         node->value = float_arr_reciever[64];
-        // TEMP
-        // node->value = color_multiplier(node->color) * temp_value_calc();
-        // node->value = temp_value_calc();
-        // TEMP
 
         Node* new_node = create_default_node();
         new_node->board_hash = e->hash_board();
@@ -615,7 +612,6 @@ void MonteCarlo::expand_node(Node* node, int* move_list)
         new_node->is_pass = true;
         new_node->move = -1;
         new_node->policy = 1;
-        // node_storage.insert({new_node->board_hash, new_node});
         node_storage.insert({node_storage_counter, new_node});
         node_storage_counter++;
         
@@ -624,26 +620,48 @@ void MonteCarlo::expand_node(Node* node, int* move_list)
         return;
     }
 
-    // run network here to get policies for children, and value (needed for next line)
-    // float_arr_reciever contains 64 policies, and the 65th is the value prediciton
+    ////// run network here to get policies for children, and value (needed for next line)
+    ////// float_arr_reciever contains 64 policies, and the 65th is the value prediciton
     send_and_recieve_model_data(node->color);
     node->value = float_arr_reciever[64];
+    //////
 
-    // for(int i = 0; i < 65; i++)
+
+    // for(int i = 0; i < move_list[0]; i++)
     // {
-    //     printf("%f, ", float_arr_reciever[i]);
+    //     printf("%f, ", float_arr_reciever[move_list[i+1]]);
     // }
     // printf("\n");
 
 
-    // TEMP
-    // node->value = color_multiplier(node->color) * temp_value_calc();
-    // node->value = temp_value_calc();
-    // TEMP
+    //////////////// masking out invalid moves and then rescaling probabilities //
+    memset(scaled_probabilities, 0, 64 * sizeof(float));
+    float accum = 0;
+    for(int i = 0; i < move_list[0]; i++)
+    {
+        accum += float_arr_reciever[move_list[i+1]];
+    }
+
+    if(accum > 0)
+    {
+        for(int i = 0; i < move_list[0]; i++)
+        {
+            scaled_probabilities[move_list[i+1]] = float_arr_reciever[move_list[i+1]] / accum;
+        }
+    }
+    else
+    {
+        printf("all moves were masked, this is most likely a problem, one message is ok though.\n");
+        for(int i = 0; i < move_list[0]; i++)
+        {
+            scaled_probabilities[move_list[i+1]] = 1.0f / (float) move_list[0];
+        }
+    }
+
+    ////////////////
+
 
     node->children_nodes = (Node*) malloc(move_list[0] * sizeof(Node));
-
-
     //////////////// THIS CODE KINDA MAKES NO SENSE FOR NODE STORAGE, JUST A FIX FOR FREEING
     node_storage.insert({node_storage_counter, node->children_nodes});
     node_storage_counter++;
@@ -664,7 +682,7 @@ void MonteCarlo::expand_node(Node* node, int* move_list)
         new_node->parent_node = node;
         new_node->move = move_list[i+1];
         // CHECK IF move_list[i+1] IS THE PROPER INDEX
-        new_node->policy = float_arr_reciever[move_list[i+1]]; // need network to run before this
+        new_node->policy = scaled_probabilities[move_list[i+1]]; // need network to run before this
         // node_storage.insert({new_node->board_hash, new_node});
         e->pop_move();
     }
@@ -789,6 +807,7 @@ void MonteCarlo::cleanup()
     printf("begining MonteCarlo cleanup\n");
     free(int_arr_sender);
     free(float_arr_reciever);
+    free(scaled_probabilities);
     printf("finished MonteCarlo cleanup\n");
 }
 

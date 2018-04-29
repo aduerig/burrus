@@ -23,7 +23,7 @@ def main():
         x_tensor = graph.get_tensor_by_name('x:0')
         train_bool = train_bool = graph.get_tensor_by_name('train_bool:0')
         value_head_output = graph.get_tensor_by_name('value_head_output:0')
-        policy_head_output = graph.get_tensor_by_name('policy_head_output/BiasAdd:0')
+        policy_head_output = graph.get_tensor_by_name('policy_head_output:0')
 
         saver.restore(sess, os.path.join(model_dir, 'model.ckpt'))
         # sess.run(tf.global_variables_initializer())
