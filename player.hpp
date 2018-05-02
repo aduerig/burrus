@@ -19,7 +19,6 @@
 #include <fcntl.h>
 #include <stdarg.h>
 #include <cstdio>
-#include <stdlib.h>
 #include <string>
 #include <inttypes.h>
 #include <unistd.h>

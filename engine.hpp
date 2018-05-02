@@ -60,6 +60,7 @@ class Engine
 
         // pushing and popping moves from stack
 
+        void push_move(int move, int color);
         void push_white_move(int move);
         void push_black_move(int move);
         void pop_move();
@@ -113,6 +114,8 @@ class Engine
 
         //move gen helpers
         bool check_legal(int move, int color);
+
+        int* generate_moves(int color);
         int* generate_white_moves();
         int* generate_black_moves();
 

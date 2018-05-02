@@ -298,6 +298,20 @@ void Engine::stack_pop()
 }
 
 // Takes in a move, alters the BitboardEngine's representation to the NEXT state based on the CURRENT move action
+void Engine::push_move(int move, int color)
+{
+    if(color == WHITE)
+    {
+        push_white_move(move);
+    }
+    else
+    {
+        push_black_move(move);
+    }
+}
+
+
+// Takes in a move, alters the BitboardEngine's representation to the NEXT state based on the CURRENT move action
 void Engine::push_white_move(int move)
 {
     if(move == -1)
@@ -536,6 +550,18 @@ U64 Engine::hash_board()
 }
 
 // Generates and returns a list of legal moves for a color
+int* Engine::generate_moves(int color)
+{
+    if(color == WHITE)
+    {
+        return generate_white_moves();
+    }
+    else
+    {
+        return generate_black_moves();
+    }
+}
+
 int* Engine::generate_white_moves()
 {
     move_list[0] = 0; // encode index in array

@@ -40,47 +40,6 @@
  *  
  */
 
-int play_game(Engine* e, std::vector<Player*> players, int* num_moves, bool print_level)
-{
-    int move;
-    int* move_list;
-    num_moves[0] = 0;
-    move_list = e->generate_black_moves();
-
-    if (print_level) e->print_char();
-    while(e->is_not_terminal(move_list, BLACK))
-    {
-        move = players[BLACK]->move(move_list);
-        e->push_black_move(move);
-        if (print_level) printf("move number %i\n", num_moves[0]); //
-        if (print_level) e->print_char();        
-        num_moves[0]++;
-
-        //TEMP
-        // std::cin.ignore( std::numeric_limits <std::streamsize> ::max(), '\n' );
-        //TEMP
-
-        move_list = e->generate_white_moves();
-        if(e->is_terminal(move_list, WHITE))
-        {
-            break;
-        }
-        move = players[WHITE]->move(move_list);
-        e->push_white_move(move);
-        if (print_level) printf("move number %i\n", num_moves[0]);
-        if (print_level) e->print_char();
-        num_moves[0]++;
-
-        // TEMP
-        // std::cin.ignore( std::numeric_limits <std::streamsize> ::max(), '\n' );
-        // TEMP
-
-        move_list = e->generate_black_moves();
-    }
-    return e->get_winner();
-}
-
-
 std::string get_newest_model_name()
 {
     FILE *fp;
@@ -109,34 +68,98 @@ std::string get_newest_model_name()
 }
 
 
-void run_driver(int games_to_play, int iterations_per_move, std::string model_name, bool print_level, int depth)
+int play_game(Engine* e, std::vector<Player*> players, int* num_moves, int print_level)
+{
+    int move;
+    int* move_list;
+    
+    int color = BLACK;
+    int player_tracker = players[BLACK]->get_color();
+    num_moves[0] = 0;
+
+    if (print_level > 0) e->print_char();
+
+    move_list = e->generate_moves(color);
+    while(e->is_not_terminal(move_list, color))
+    {
+        move = players[player_tracker]->move(move_list);
+        e->push_move(move, color);
+
+        if (print_level > 0) printf("player: %i, color: %i\nmove number %i\n", 
+                                    player_tracker, color, num_moves[0]);
+        if (print_level > 0) e->print_char();        
+
+        num_moves[0]++;
+        if (print_level > 1) std::cin.ignore( std::numeric_limits <std::streamsize> ::max(), '\n' );
+        
+        color = 1 - color;
+        player_tracker = 1 - player_tracker;
+
+        move_list = e->generate_moves(color);
+    }
+    return e->get_winner();
+}
+
+
+void run_driver(int games_to_play, int iterations_per_move, std::string model_name, 
+                int print_level, std::string player1, std::string player2, int depth)
 {
     Engine* e = new Engine();
 
     // std::chrono::time_point<std::chrono::system_clock> game_start_timer, game_end_timer, wait1_start_timer, wait1_end_timer;
     // std::chrono::duration<double, std::nano> game_time_result, wait1_time_result;
-    
 
-    if(model_name == "recent") // Read in the new neural network model name
+    if (model_name == "recent") // Read in the new neural network model name
     {
         model_name = get_newest_model_name();
     }
 
+    if (print_level > 0) std::cout << "playing with model: " << model_name << std::endl;
 
-    if (print_level) std::cout << "playing with model: " << model_name << std::endl;
-
-
-    PyCommunicator* comm = new PyCommunicator(model_name);
-    comm->setup_python_communication();
-
+    PyCommunicator* comm;
+    if (player1 == "monte" || player2 == "monte")
+    {
+        comm = new PyCommunicator(model_name);
+        comm->setup_python_communication();
+    }
 
     std::vector<Player*> players;
+    
 
-    players.push_back(new MonteCarlo(BLACK, e, model_name, iterations_per_move, false, comm)); // white
-    players.push_back(new Rand(WHITE, e)); // black
-    // players.push_back(new Minimax(BLACK, e, depth)); // white
-    // players.push_back(new MonteCarlo(WHITE, e, model_name, iterations_per_move, false, 
-                        // pSemaphore, pSharedMemory_code, pSharedMemory_rest)); // white
+    if (player1 == "monte")
+    {
+        players.push_back(new MonteCarlo(BLACK, e, model_name, iterations_per_move, false, comm));
+    }
+    else if (player1 == "rand")
+    {
+        players.push_back(new Rand(BLACK, e));
+    }
+    else if (player1 == "human")
+    {
+        players.push_back(new Human(BLACK, e));
+    }
+    else if (player1 == "minimax")
+    {
+        players.push_back(new Minimax(BLACK, e, depth));
+    }
+
+    if (player2 == "monte")
+    {
+        players.push_back(new MonteCarlo(WHITE, e, model_name, iterations_per_move, false, comm));
+    }
+    else if (player2 == "rand")
+    {
+        players.push_back(new Rand(WHITE, e));
+    }
+    else if (player2 == "human")
+    {
+        players.push_back(new Human(WHITE, e));
+    }
+    else if (player2 == "minimax")
+    {
+        players.push_back(new Minimax(WHITE, e, depth));
+    }
+
 
     int* num_moves = (int*) calloc(1, sizeof(int));    // Variable for the number of moves in the game
     int result_store[3] = {0, 0, 0};
@@ -144,20 +167,23 @@ void run_driver(int games_to_play, int iterations_per_move, std::string model_na
     // Loop over the number of games we are playing
     for (int i = 0; i < games_to_play; i++)
     {
-        if(print_level) std::cout << "Playing game " << i << std::endl;
+        if(print_level > 0) std::cout << "Playing game " << i << std::endl;
         result_store[play_game(e, players, num_moves, print_level)]++;
-        if(print_level) std::cout << "finished playing game" << std::endl;
+        if(print_level > 0) std::cout << "finished playing game" << std::endl;
 
         e->reset_engine(); // free and reset the engine for a new game
     }
 
-    if (print_level) std::cout << "Finished playing " << games_to_play << " games." << std::endl;
-    if (print_level) printf("Cleaning up engine and players\n");
+    if (print_level > 0) std::cout << "Finished playing " << games_to_play << " games." << std::endl;
+    if (print_level > 0) printf("Cleaning up engine and players\n");
 
-    printf("out of %i games\nwhite won: %i\nblack won %i\ndraws %i\nwhite win percentage: %f\n", 
-                games_to_play, result_store[1], result_store[0], result_store[2], (float)result_store[1] / games_to_play);
+    printf("out of %i games\nwhite won: %i\nblack won %i\ndraws %i\n"
+           "white win percentage (excluding draws): %f\n", 
+            games_to_play, result_store[1], result_store[0], result_store[2], 
+            (float) result_store[1] / games_to_play);
 
     /////////////// clean up //////////////
+
     players[BLACK]->cleanup();
     players[WHITE]->cleanup();
     delete(players[0]);
@@ -169,28 +195,27 @@ void run_driver(int games_to_play, int iterations_per_move, std::string model_na
     delete(e);
     free(num_moves);
 
-    comm->clean_up();
-    delete(comm);
+    if (player1 == "monte" || player2 == "monte")
+    {
+        comm->clean_up();
+        delete(comm);
+    }
+
     ///////////////////////////////////////
 
     printf("driver has finished\n");
 }
 
-
-// example call
 // ./driver -iter 20 -ngames 10 -name model_0
 int main(int argc, char * argv[])
 {
-    
-    // int iterations_per_move = 500;
-    // int games_to_play = 10;
-    // std::string model_name = "model_5";
-
-    int iterations_per_move = -1; 
-    int games_to_play = -1;
-    std::string model_name = "hurglblrg";
-    int depth = 0;
+    int iterations_per_move = 50; 
+    int games_to_play = 1;
+    std::string model_name = "recent";
+    std::string player1 = "monte"; // monte, rand, human, minimax
+    std::string player2 = "rand";
     int print_level = 0;
+    int depth = 0;
 
     for (int i = 0; i < argc; ++i)
     {
@@ -206,19 +231,27 @@ int main(int argc, char * argv[])
         {
             model_name = argv[i+1];
         }
+        if (strcmp(argv[i], "-player1") == 0)
+        {
+            player1 = argv[i+1];
+        }
+        if (strcmp(argv[i], "-player2") == 0)
+        {
+            player2 = argv[i+1];
+        }
+        if (strcmp(argv[i], "-depth") == 0)
+        {
+            depth = atoi(argv[i+1]);
+        }
         if (strcmp(argv[i], "-print") == 0)
         {
             print_level = atoi(argv[i+1]);
         }
     }
 
-    printf("iter: %i, games: %i, model_name: %s\n", iterations_per_move, games_to_play, model_name.c_str());
+    printf("iter: %i, games: %i, model_name: %s, player1: %s, player2: %s, depth: %i\n", 
+            iterations_per_move, games_to_play, model_name.c_str(), player1.c_str(), player2.c_str(), depth);
 
-    if(model_name == "hurglblrg" || games_to_play == -1 || iterations_per_move == -1)
-    {
-        printf("improper argument string, you need -name, -ngames, and -iter\n -print is optional arg (default off)\n");
-        exit(0);
-    }
 
     bool print_level_bool = false;
     if(print_level)
@@ -227,7 +260,7 @@ int main(int argc, char * argv[])
     }
 
     srand(time(NULL)); // seed rand    
-    run_driver(games_to_play, iterations_per_move, model_name, print_level_bool, depth);
+    run_driver(games_to_play, iterations_per_move, model_name, print_level, player1, player2, depth);
     
     return 0;
 }
