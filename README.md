@@ -1,22 +1,16 @@
 # othello
 C++ - Using distributed reinforcement learning to play othello
 
-## Running on bridges
+## Dependancies
 
-To run interactively (not with a job script):  
-	- Run "module load tensorflow/1.5_gpu gcc"  
-	- Run "pip install --user posix_ipc"  
-	- Then run "interact -gpu" to get a hold of gpu  
-	- Run "make"  
-	- Run whatever file needed
+### Linux / OSX
+Python 2.7
+posix_ipc
+tensorflow 1.5
+c++14
 
-Warning, if "module purge" is run, then "module load slurm/default psc_path/1.1" must be run to interact with the GPU.
-
-If you encounter an error that tensorflow session is unable to be created, it means that your GPU memory is full.
-
-Run "nvidia-smi" to check on gpu memory usage.
-
-If you encounter the error: "Check failed: stream->parent()->GetConvolveAlgorithms( conv_parameters.ShouldIncludeWinogradNonfusedAlgo<T>(), &algorithms)", then delete the .nv folder from your home directory
+### Windows
+No current support
 
 ## Description of files
 
