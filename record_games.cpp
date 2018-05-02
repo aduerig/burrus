@@ -155,7 +155,7 @@ void save_game_info(std::string model_path, int local_rank, int game_number, Eng
 
     // save num_moves
     fprintf(fp, "%d\n", num_moves); //doesnt record moves it didn't make a decision in
-    for (int i = num_moves-1; i >= 0; --i)
+    for (int i = num_moves-1; i >= 0; i--)
     {
         e->stack_pop();
 
