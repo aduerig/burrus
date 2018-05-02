@@ -13,7 +13,7 @@ def draw_lines(canvas, width, height):
     # vertical lines
     curr_x = 0
     inc_x = width / 8
-    for i in range(8):
+    for i in range(9):
         line = canvas.create_line(curr_x, 0, curr_x, height, fill = 'black')
         holder.append(line)
         curr_x += inc_x
@@ -21,7 +21,7 @@ def draw_lines(canvas, width, height):
     # horizontal lines
     curr_y = 0
     inc_y = height / 8
-    for i in range(8):
+    for i in range(9):
         line = canvas.create_line(0, curr_y, width, curr_y, fill = 'black')
         holder.append(line)
         curr_y += inc_y
@@ -41,8 +41,6 @@ def draw_circle(canvas, width, height, pos):
     offset = 5
     square_x_size = (width / 8)
     square_y_size = (height / 8)
-    # circle_x_size = (width / 8) - offset
-    # circle_y_size = (height / 8) - offset
     
     circ = canvas.create_oval(x * square_x_size + offset, y * square_y_size + offset, 
                             (x+1) * square_x_size - offset, 
@@ -74,16 +72,24 @@ def close(event):
     exit() # if you want to exit the entire thing
 
 
-def display_game(games):
+def display_game(games, games_dir):
     top = Tk()
+    top.title('Othello game displayer')
+
+    bg_color_board = "salmon4"
+    bg_color = "gray25"
+    top.configure(bg=bg_color)
 
     w = 500
     h = 500
-    bg_color = "salmon4"
-    canvas = Canvas(top, bg = bg_color, height = h, width = w)
+    canvas = Canvas(top, bg = bg_color_board, height = h, width = w)
+    # canvas.pack_propagate(False)
 
-    text = Label(top, text="Rouge", height=2, bg = bg_color)
+    game_num = 0
+    text_to_disp = "{0}\ngame number: {1}".format(games_dir, game_num)
+    text = Label(top, text=text_to_disp, height=2, bg = bg_color, fg="white", font=("Helvetica", 11))
     text.pack()
+
 
     # coord = [10, 50, 240, 210]
     # arc = canvas.create_arc(coord, start = 0, extent = 150, fill = "red")
@@ -113,16 +119,16 @@ def load_games(games_dir):
 
 
 def main():    
-    data_dir = utils.get_games_dir('recent')
-    print('Using model at: ' + data_dir)
-    games = load_games(data_dir)
+    games_dir = utils.get_games_dir('recent')
+    print('Using model at: ' + games_dir)
+    games = load_games(games_dir)
 
     # for i in reversed(range(len(games[0]))):
     #     utils.print_board(games[0][i])
     #     input("Press enter to see next board state")
 
     inv_games = [list(reversed(games[0])), list(reversed(games[1])), list(reversed(games[2]))]
-    display_game(inv_games)
+    display_game(inv_games, games_dir)
 
 
 if __name__ == "__main__":
