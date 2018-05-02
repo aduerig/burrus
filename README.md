@@ -5,8 +5,11 @@ C++ - Using distributed reinforcement learning to play othello
 
 ### Linux / OSX
 Python 2.7
+
 posix_ipc
+
 tensorflow 1.5
+
 c++14
 
 ### Windows
