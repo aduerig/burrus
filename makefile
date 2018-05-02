@@ -1,17 +1,19 @@
 CC = g++
 MPICC = mpic++
 CFLAGS = -std=c++14 -O1 -Wall -Wno-unused-variable -Wno-unused-value -Wno-comment -Wno-unused-but-set-variable -Wno-maybe-uninitialized -Wno-delete-non-virtual-dtor -g
-DRIVER_HEADERS = engine.hpp player.hpp driver.hpp
-PLAY_HEADERS = engine.hpp player.hpp
-PARAM_HEADERS = engine.hpp player.hpp param_serial.hpp
 LINKER_OPTIONS= -lrt -lpthread
 
-DRIVER_OBJECTS = engine.cpp driver.cpp player.cpp
+
+DRIVER_HEADERS = communicator.hpp engine.hpp player.hpp
+PLAY_HEADERS = engine.hpp player.hpp
+PARAM_HEADERS = engine.hpp player.hpp param_serial.hpp
+
+DRIVER_OBJECTS = communicator.cpp engine.cpp driver.cpp player.cpp
 PLAY_OBJECTS = play.cpp engine.cpp player.cpp
 PARAM_OBJECTS = engine.cpp player.cpp param_serial.cpp
 
 
-all: param driver play
+all: driver
 
 driver: $(DRIVER_OBJECTS)
 	$(CC) $(CFLAGS) $(DRIVER_HEADERS) $(DRIVER_OBJECTS) -o driver $(LINKER_OPTIONS)

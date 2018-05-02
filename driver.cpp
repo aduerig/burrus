@@ -8,7 +8,7 @@
 #include <vector>
 #include "engine.hpp"
 #include "player.hpp"
-#include "driver.hpp"
+#include "communicator.hpp"
 
 // g++ bitboard.hpp bitboard.cpp player.hpp player.cpp play.cpp -std=c++14 -o run
 
@@ -27,21 +27,6 @@
 
 
 
-/*
- *  To compile on bridges, make sure you have done
- *  module load gcc mpi/gcc_openmpi
- *
- */
-
-/* to run on bridges
- * mpirun -n num_proccessors ./param
- */
-
-// run serial to play 10 games of montecarlo vs montecarlo
-// ./param_serial -rank 0 -ngames 10
-
-
-
 /*  
  * OUTPUT: the path to the directory with the newest Neural Network. will be "../data/model_%d" 
  *         where the %d is whatever number model we're on.
@@ -55,28 +40,20 @@
  *  
  */
 
-
-Driver::Driver()
-{
-    // blank
-}
-
-
-/* MRD I copied this from play.cpp but added the MC_chances parameter and the few lines that use it*/
-int Driver::play_game(Engine* e, std::vector<Player*> players, int* num_moves, bool print_on)
+int play_game(Engine* e, std::vector<Player*> players, int* num_moves, bool print_level)
 {
     int move;
     int* move_list;
     num_moves[0] = 0;
     move_list = e->generate_black_moves();
 
-    if (print_on) e->print_char();
+    if (print_level) e->print_char();
     while(e->is_not_terminal(move_list, BLACK))
     {
         move = players[BLACK]->move(move_list);
         e->push_black_move(move);
-        if (print_on) printf("move number %i\n", num_moves[0]); //
-        if (print_on) e->print_char();        
+        if (print_level) printf("move number %i\n", num_moves[0]); //
+        if (print_level) e->print_char();        
         num_moves[0]++;
 
         //TEMP
@@ -90,8 +67,8 @@ int Driver::play_game(Engine* e, std::vector<Player*> players, int* num_moves, b
         }
         move = players[WHITE]->move(move_list);
         e->push_white_move(move);
-        if (print_on) printf("move number %i\n", num_moves[0]);
-        if (print_on) e->print_char();
+        if (print_level) printf("move number %i\n", num_moves[0]);
+        if (print_level) e->print_char();
         num_moves[0]++;
 
         // TEMP
@@ -104,227 +81,7 @@ int Driver::play_game(Engine* e, std::vector<Player*> players, int* num_moves, b
 }
 
 
-void Driver::call_python_script_helper(new_params params, std::string model_name)
-{
-    std::string command = "python python_model_communicator.py " + params.semaphore_name + " " + 
-                            params.shared_memory_name + " " + 
-                            model_name;
-
-    printf("EXECUTING: %s\n", command.c_str());
-    pid_t pid = fork();
-    if(pid != 0)
-    {
-        int ret_val = system(command.c_str());
-        exit(0);
-    }
-}
-
-
-// model and python communication
-// 0 is success
-// 1 is semaphore error
-// 2 is shared memory error
-int Driver::setup_python_communication()
-{
-    // printf("SEEDING RANDOM\n");
-    // srand (time(NULL));
-
-    pSemaphore = NULL;
-    pSharedMemory_code = NULL;
-    pSharedMemory_rest = NULL;
-
-    // sender flag
-    send_code = -1; // -1 is uninitilized, 0 is c sent, 1 is python sent, 2 is c sent python kill
-
-    
-    printf("COMMUNICATION CHANNEL INITIALIZING IN C++!\n");
-
-    // Create the shared memory
-    fd = shm_open(params.shared_memory_name.c_str(), O_RDWR | O_CREAT | O_EXCL, params.permissions);    
-
-    if (fd == -1) 
-    {
-        fd = 0;
-        printf("Creating the shared memory failed\n");
-        return 2;
-    }
-
-    else 
-    {
-        // The memory is created as a file that's 0 bytes long. Resize it.
-        rc = ftruncate(fd, params.size);
-        if (rc) 
-        {
-            printf("Resizing the shared memory failed\n");
-            return 2;
-        }
-        else 
-        {
-            // MMap the shared memory
-            //void *mmap(void *start, size_t length, int prot, int flags, int fd, off_t offset);
-            pSharedMemory_code = mmap((void *)0, (size_t)params.size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-            if (pSharedMemory_code == MAP_FAILED) 
-            {
-                pSharedMemory_code = NULL;
-                printf("MMapping the shared memory failed\n");
-                return 2;
-            }
-            else 
-            {
-                pSharedMemory_rest = (void*) (((int32_t*) pSharedMemory_code) + 1);
-                printf("pSharedMemory_code = %p\n", pSharedMemory_code);
-                printf("pSharedMemory_rest = %p\n", pSharedMemory_rest);
-            }
-        }
-    }
-    
-    if (pSharedMemory_code) 
-    {
-        // Create the semaphore
-        pSemaphore = sem_open(params.semaphore_name.c_str(), O_CREAT, params.permissions, 0);
-    
-        if (pSemaphore == SEM_FAILED) 
-        {
-            printf("Creating the semaphore failed\n");
-            return 1;
-        }
-        else 
-        {
-            printf("pSemaphore =  %p\n", (void *)pSemaphore);
-        }
-    }
-
-    printf("communication channel established\n");
-    return 0;
-}
-
-void Driver::send_end_code_python()
-{
-    send_code = 2;
-    memcpy(pSharedMemory_code, &send_code, sizeof(int32_t));
-}
-
-// 0 is success
-// 1 is semaphore error
-// 2 is shared memory error
-int Driver::destroy_communication()
-{
-    send_end_code_python();
-
-    // Announce for one last time that the semaphore is free again so that python can quit
-    printf("Final release of the semaphore and send_code followed by a 5 second pause\n"); 
-    rc = release_semaphore(pSemaphore);
-    sleep(1); // race condition, where the python takes 5 seconds to quit
-
-    printf("Final wait to acquire the semaphore\n"); 
-    rc = acquire_semaphore(pSemaphore);
-    if (!rc) 
-    {
-        printf("Destroying the shared memory.\n");
-
-        rc = munmap(pSharedMemory_code, (size_t)params.size); // Un mmap the memory
-        if (rc) 
-        {
-            printf("Unmapping the memory failed\n");
-            return 2;
-        }
-        
-        if (-1 == close(fd)) // close file descriptor 
-        {
-            printf("Closing the memory's file descriptor failed\n");
-            return 2;
-        }
-    
-        rc = shm_unlink(params.shared_memory_name.c_str()); // destroy the shared memory.
-        if (rc) 
-        {
-            printf("Unlinking the memory failed\n");
-            return 2;
-        }
-    }
-
-    printf("Destroying the semaphore.\n");
-    // Clean up the semaphore
-    rc = sem_close(pSemaphore);
-    if (rc) 
-    {
-        printf("Closing the semaphore failed\n");
-        return 1;
-        
-    }
-    rc = sem_unlink(params.semaphore_name.c_str());
-    if (rc) 
-    {
-        printf("Unlinking the semaphore failed\n");
-        return 1;
-        
-    }
-
-    return 0;
-}
-
-void Driver::cleanup()
-{
-    printf("begining communication cleanup\n");
-    int ret_val = destroy_communication();
-    if(ret_val == 1)
-    {
-        printf("Setup python communication returned with error 1 (problems with semaphore) exiting.");
-        exit(0);
-    }
-    else if(ret_val == 2)
-    {
-        printf("Setup python communication returned with error 2 (problems with shared memory) exiting.");
-        exit(0);
-    }
-    printf("finished communication cleanup\n");
-}
-
-
-// https://stackoverflow.com/questions/440133/how-do-i-create-a-random-alpha-numeric-string-in-c
-std::string Driver::gen_random(const int len) 
-{
-    std::string new_str;
-    for(int i = 0; i < len; i++)
-    {
-        new_str.append(" ");
-    }
-
-    static const char alphanum[] =
-        "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-        "abcdefghijklmnopqrstuvwxyz";
-
-    for (int i = 0; i < len; ++i) 
-    {
-        new_str[i] = alphanum[rand() % (sizeof(alphanum) - 1)];
-    }
-    return new_str;
-}
-
-int Driver::release_semaphore(sem_t *pSemaphore) 
-{
-    int rc = 0;
-    rc = sem_post(pSemaphore);
-    if(rc) 
-    {
-        printf("Releasing the semaphore failed\n");
-    }
-    return rc;
-}
-
-int Driver::acquire_semaphore(sem_t *pSemaphore) 
-{
-    int rc = 0;
-    rc = sem_wait(pSemaphore);
-    if(rc) 
-    {
-        printf("Acquiring the semaphore failed\n");
-    }
-    return rc;
-}
-
-
-std::string Driver::get_newest_model_name()
+std::string get_newest_model_name()
 {
     FILE *fp;
     char *fnm = (char *) calloc(50, sizeof(char));
@@ -352,115 +109,71 @@ std::string Driver::get_newest_model_name()
 }
 
 
-void Driver::run_driver(int games_to_play, int iterations_per_move, std::string model_name, bool print_on, int depth)
+void run_driver(int games_to_play, int iterations_per_move, std::string model_name, bool print_level, int depth)
 {
     Engine* e = new Engine();
 
-    std::chrono::time_point<std::chrono::system_clock> game_start_timer, game_end_timer, wait1_start_timer, wait1_end_timer;
-    std::chrono::duration<double, std::nano> game_time_result, wait1_time_result;
+    // std::chrono::time_point<std::chrono::system_clock> game_start_timer, game_end_timer, wait1_start_timer, wait1_end_timer;
+    // std::chrono::duration<double, std::nano> game_time_result, wait1_time_result;
     
 
-    // Read in the new neural network model name
-
-    // std::string model_name = "model_0";
-
-    if(model_name == "recent")
+    if(model_name == "recent") // Read in the new neural network model name
     {
         model_name = get_newest_model_name();
     }
 
 
-    std::string model_path = "data/" + model_name;
-
-    if (print_on) std::cout << "playing with model: " << model_name << std::endl;
+    if (print_level) std::cout << "playing with model: " << model_name << std::endl;
 
 
-
-    //////////////////////// CODE FOR MONTECARLO PYTHON COMMUNICATOR //////////////////////
-
-
-
-    // asigning values to struct
-    params.semaphore_name = gen_random(10);
-    params.shared_memory_name = gen_random(10);
-    params.size = 4096;
-    // params.semaphore_name = "other_stuff";
-    // params.shared_memory_name = "shared_memory_1";
-    params.permissions = 0600;
-
-    printf("params - size: %d\n", params.size);
-    printf("params - semaphore_name: %s\n", params.semaphore_name.c_str());
-    printf("params - shared_memory_name: %s\n", params.shared_memory_name.c_str());
-    printf("params - permissions: %d\n", params.permissions);
-
-    call_python_script_helper(params, model_name);
-
-
-    // spawn pythoner
-    int ret_val = setup_python_communication();
-    if(ret_val == 1)
-    {
-        printf("Setup python communication returned with error 1 (problems with semaphore) exiting.");
-        exit(0);
-    }
-    else if(ret_val == 2)
-    {
-        printf("Setup python communication returned with error 2 (problems with shared memory) exiting.");
-        exit(0);
-    }
-
-
-    ///////////////////////////////////////////////////////////////////////////////////////
-
-
+    PyCommunicator* comm = new PyCommunicator(model_name);
+    comm->setup_python_communication();
 
 
     std::vector<Player*> players;
 
-    players.push_back(new MonteCarlo(BLACK, e, model_name, iterations_per_move, false,
-                        pSemaphore, pSharedMemory_code, pSharedMemory_rest)); // white
+    players.push_back(new MonteCarlo(BLACK, e, model_name, iterations_per_move, false, comm)); // white
     players.push_back(new Rand(WHITE, e)); // black
     // players.push_back(new Minimax(BLACK, e, depth)); // white
     // players.push_back(new MonteCarlo(WHITE, e, model_name, iterations_per_move, false, 
                         // pSemaphore, pSharedMemory_code, pSharedMemory_rest)); // white
 
-    // Variable for the number of moves in the game
-    int* num_moves = (int*) calloc(1, sizeof(int));
-
+    int* num_moves = (int*) calloc(1, sizeof(int));    // Variable for the number of moves in the game
     int result_store[3] = {0, 0, 0};
         
-    // Loop over the number of games we're playing per processor per model
-    for (int i = 0; i < games_to_play; ++i)
+    // Loop over the number of games we are playing
+    for (int i = 0; i < games_to_play; i++)
     {
-        if(print_on) std::cout << "Playing game " << i << std::endl;
-        result_store[play_game(e, players, num_moves, print_on)]++;
-        if(print_on) std::cout << "finished playing game" << std::endl;
+        if(print_level) std::cout << "Playing game " << i << std::endl;
+        result_store[play_game(e, players, num_moves, print_level)]++;
+        if(print_level) std::cout << "finished playing game" << std::endl;
 
-        // free and reset the engine for a new game
-        e->reset_engine();
+        e->reset_engine(); // free and reset the engine for a new game
     }
-    players.clear();
 
-    if (print_on) std::cout << "Finished playing " << games_to_play << " games." << std::endl;
-    if (print_on) printf("Cleaning up engine and players\n");
+    if (print_level) std::cout << "Finished playing " << games_to_play << " games." << std::endl;
+    if (print_level) printf("Cleaning up engine and players\n");
 
     printf("out of %i games\nwhite won: %i\nblack won %i\ndraws %i\nwhite win percentage: %f\n", 
                 games_to_play, result_store[1], result_store[0], result_store[2], (float)result_store[1] / games_to_play);
 
-    // clean up
+    /////////////// clean up //////////////
     players[BLACK]->cleanup();
     players[WHITE]->cleanup();
-
     delete(players[0]);
     delete(players[1]);
     players.clear();
     players.shrink_to_fit();
+
     e->clean_up();
     delete(e);
     free(num_moves);
-    cleanup();
 
-    if (print_on) printf("driver has finished\n");
+    comm->clean_up();
+    delete(comm);
+    ///////////////////////////////////////
+
+    printf("driver has finished\n");
 }
 
 
@@ -477,7 +190,7 @@ int main(int argc, char * argv[])
     int games_to_play = -1;
     std::string model_name = "hurglblrg";
     int depth = 0;
-    int print_on = 0;
+    int print_level = 0;
 
     for (int i = 0; i < argc; ++i)
     {
@@ -495,11 +208,7 @@ int main(int argc, char * argv[])
         }
         if (strcmp(argv[i], "-print") == 0)
         {
-            print_on = atoi(argv[i+1]);
-        }
-        if (strcmp(argv[i], "-print") == 0)
-        {
-            print_on = atoi(argv[i+1]);
+            print_level = atoi(argv[i+1]);
         }
     }
 
@@ -511,56 +220,14 @@ int main(int argc, char * argv[])
         exit(0);
     }
 
-    bool print_on_bool = false;
-    if(print_on)
+    bool print_level_bool = false;
+    if(print_level)
     {
-        print_on_bool = true;
+        print_level_bool = true;
     }
 
-    srand(time(NULL)); // seed rand
-    Driver* p = new Driver();
-    
-    p->run_driver(games_to_play, iterations_per_move, model_name, print_on_bool, depth);
+    srand(time(NULL)); // seed rand    
+    run_driver(games_to_play, iterations_per_move, model_name, print_level_bool, depth);
     
     return 0;
 }
-
-
-    // srand(time(NULL));
-    // Engine* e = new Engine();
-    
-    // std::vector<Player*> players;
-    // // warning players must be instaniated in the right order, 0 then 1
-    // int is_training = 0;
-    // // players.push_back(new Rand(BLACK, e)); // black
-    // players.push_back(new MonteCarlo(BLACK, e, "model_0", 5, is_training)); // black
-    // // players.push_back(new MonteCarlo(WHITE, e, "model_0", 500, is_training)); // white
-    // players.push_back(new Rand(WHITE, e)); // white
-
-    // int* num_moves = (int*) malloc(sizeof(int));
-    // num_moves[0] = 0;
-
-    // int num_games = 1;
-    // int result_store[3] = {0, 0, 0};
-    
-    // for(int i = 0; i < num_games; i++)
-    // {
-    //     result_store[play_game(e, players, num_moves)]++;
-    //     e->reset_engine();
-    // }
-
-    // std::cout << "total moves made: " << num_moves[0] << std::endl;
-    // printf("out of %i games\nwhite won: %i\nblack won %i\ndraws %i\nwhite win percentage: %f\n", 
-    //                 num_games, result_store[1], result_store[0], result_store[2], (float)result_store[1] / num_games);
-
-    // // clean up
-    // players[BLACK]->cleanup();
-    // players[WHITE]->cleanup();
-
-    // delete(players[0]);
-    // delete(players[1]);
-    // players.clear();
-    // players.shrink_to_fit();
-    // e->clean_up();
-    // delete(e);
-    // free(num_moves);

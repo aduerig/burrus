@@ -361,8 +361,8 @@ void Minimax::cleanup()
 
 
 
-MonteCarlo::MonteCarlo(int col, Engine* engine, std::string m_path, int sims, bool training, 
-                        sem_t* pSem, void* pSem_code, void* pSem_rest) : Player(col, engine)
+MonteCarlo::MonteCarlo(int col, Engine* engine, std::string m_path, int sims, 
+                        bool training, PyCommunicator* arg_comm) : Player(col, engine)
 {
     model_path = m_path;
 
@@ -379,17 +379,12 @@ MonteCarlo::MonteCarlo(int col, Engine* engine, std::string m_path, int sims, bo
     num_floats_recieve = 65;
 
     int_arr_sender = (int32_t*) malloc(num_ints_send * sizeof(int32_t));
-    float_arr_reciever = (float*) malloc(num_floats_recieve * sizeof(float));
+    // float_arr_reciever = (float*) malloc(num_floats_recieve * sizeof(float));
     scaled_probabilities = (float*) malloc(64 * sizeof(float));
 
-    send_code = -1;
-
-    pSemaphore = pSem;
-    pSharedMemory_code = pSem_code;
-    pSharedMemory_rest = pSem_rest;
+    comm = arg_comm;
 
     no_decision = 0;
-
     temperature = 1;
 }
 
@@ -626,7 +621,7 @@ void MonteCarlo::expand_node(Node* node, int* move_list)
 
         // initializing a PASS node
         // run network here to get policies for children, and value (needed for next line)
-        send_and_recieve_model_data(node->color);
+        float* float_arr_reciever = send_and_recieve_model_data(node->color);
         node->value = float_arr_reciever[64];
         node->num_children = 1;
 
@@ -650,7 +645,7 @@ void MonteCarlo::expand_node(Node* node, int* move_list)
 
     ////// run network here to get policies for children, and value (needed for next line)
     ////// float_arr_reciever contains 64 policies, and the 65th is the value prediciton
-    send_and_recieve_model_data(node->color);
+    float* float_arr_reciever = send_and_recieve_model_data(node->color);
     node->value = float_arr_reciever[64];
     //////
 
@@ -802,46 +797,6 @@ int MonteCarlo::node_argmax(Node* node, int num_nodes)
     return best_index;
 }
 
-// Node* MonteCarlo::choose_node_random(Node* node)
-// {
-//     int total_visits;
-//     Node* curr_child;
-
-//     for(int i = 0; i < node->num_children; i++)
-//     {
-//         total_visits += (node->children_nodes + i)->visits;
-//     }
-
-//     printf("total_visits: %i\n", total_visits);
-
-//     int* rand_holder = (int*) malloc(total_visits * sizeof(int));
-//     int curr_pos = 0;
-
-//     for(int i = 0; i < node->num_children; i++)
-//     {
-//         curr_child = node->children_nodes + i;
-//         for (int j = 0; j < curr_child->visits; j++)
-//         {
-//             rand_holder[curr_pos] = i;
-//             curr_pos++;
-//             // printf("curr_pos\n");
-//         }
-//     }
-
-//     // for(int i = 0; i < total_visits; i++)
-//     // {
-//     //     printf("%i, ", rand_holder[i]);
-//     // }
-//     // printf("\n");
-
-//     // printf("before 834 random\n");
-
-//     int chosen_node_index = rand_holder[rand() % total_visits];
-//     free(rand_holder);
-
-//     // printf("before return\n");
-//     return node->children_nodes + chosen_node_index;
-// }
 
 Node* MonteCarlo::choose_node_random(Node* node)
 {
@@ -892,7 +847,6 @@ void MonteCarlo::cleanup()
 {
     printf("begining MonteCarlo cleanup\n");
     free(int_arr_sender);
-    free(float_arr_reciever);
     free(scaled_probabilities);
     printf("finished MonteCarlo cleanup\n");
 }
@@ -920,103 +874,10 @@ void MonteCarlo::load_board_state_to_int_arr_sender(int p_color)
     }
 }
 
-// 0 is success
-// 1 is aquiring failure
-int MonteCarlo::send_and_recieve_model_data(int p_color)
+float* MonteCarlo::send_and_recieve_model_data(int p_color)
 {        
-    send_code = 0;
-
     load_board_state_to_int_arr_sender(p_color);
-
-    memcpy(pSharedMemory_code, &send_code, sizeof(int32_t));
-    memcpy(pSharedMemory_rest, int_arr_sender, num_ints_send * sizeof(int32_t));
-
-    // printf("AS COLOR %i, I AM SENDING:\n", p_color);
-    // for(int i = 0; i < 128; i++)
-    // {
-    //     printf("%i, ", int_arr_sender[i]);
-    // }
-    // printf("\n");
-    // exit(0);
-
-
-    // printf("Wrote send_code: %d\n", send_code);
-    // printf("Wrote %d ints\n", num_ints_send);
-    // printf("sizeof = %lu\n", sizeof(int32_t));
-    // printf("length = %lu\n", num_ints_send * sizeof(int32_t));
-
-    // Release the semaphore...
-    rc = release_semaphore(pSemaphore);
-    // ...and wait for it to become available again. In real code 
-    // I might want to sleep briefly before calling .acquire() in
-    // order to politely give other processes an opportunity to grab
-    // the semaphore while it is free so as to avoid starvation. But 
-    // this code is meant to be a stress test that maximizes the 
-    // opportunity for shared memory corruption and politeness is 
-    // not helpful in stress tests.
-    if (!rc)
-    {
-        rc = acquire_semaphore(pSemaphore);
-    }
-    if (rc) // aquiring failed
-    {
-        return 1;
-    }
-    else 
-    {
-        // I keep checking the shared memory until something new has 
-        // been written.
-
-        memcpy(&send_code, pSharedMemory_code, sizeof(int32_t));
-        while ((!rc) && send_code == 0) 
-        {            
-            rc = release_semaphore(pSemaphore);
-            if (!rc) 
-            {
-                rc = acquire_semaphore(pSemaphore);
-            }
-            memcpy(&send_code, pSharedMemory_code, sizeof(int32_t));
-        }
-
-        if (rc)  // aquiring failed
-        {
-            return 1;
-        }
-
-        // send_code is not 0, means we have recieved data
-        // first 64 are policies, last is value prediction
-        memcpy(float_arr_reciever, pSharedMemory_rest, num_floats_recieve * sizeof(float));
-
-        // for(int i = 0; i < 64; i++)
-        // {
-        //     printf("%f,", float_arr_reciever[i]);
-        // }
-        // printf("\n");
-    }
-
-    return 0;
-}
-
-int MonteCarlo::release_semaphore(sem_t *pSemaphore) 
-{
-    int rc = 0;
-    rc = sem_post(pSemaphore);
-    if(rc) 
-    {
-        printf("Releasing the semaphore failed\n");
-    }
-    return rc;
-}
-
-int MonteCarlo::acquire_semaphore(sem_t *pSemaphore) 
-{
-    int rc = 0;
-    rc = sem_wait(pSemaphore);
-    if(rc) 
-    {
-        printf("Acquiring the semaphore failed\n");
-    }
-    return rc;
+    return comm->send_and_recieve(int_arr_sender);
 }
 
 void MonteCarlo::fill_random_ints(int* ints_to_fill, int num_ints_send)
@@ -1027,17 +888,6 @@ void MonteCarlo::fill_random_ints(int* ints_to_fill, int num_ints_send)
         ints_to_fill[i] = i;
     }
 }
-
-
-
-
-// temp funcs
-
-int MonteCarlo::temp_value_calc()
-{
-    return e->score_board();
-}
-
 
 
 // helper functions
