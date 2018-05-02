@@ -19,6 +19,8 @@
 #include <fstream>
 #include <string>
 #include <vector>
+#include <cstring>
+#include <cstdint>
 #include "engine.hpp"
 #include "player.hpp"
 #include "communicator.hpp"
@@ -125,7 +127,8 @@ std::string gen_random(const int len)
 
 
 void save_game_info(std::string model_path, int local_rank, int game_number, Engine* e, 
-                                        int num_moves, int result, float **MC_chances, float *saved_values, int* no_decision_arr, int* decisions_made)
+                                        int num_moves, int result, float **MC_chances, 
+                                        int* recorded_moves)
 {
     // Filename: ${model_path}/games/${local_rank}_${game_number}.game
     FILE *fp;
@@ -151,70 +154,49 @@ void save_game_info(std::string model_path, int local_rank, int game_number, Eng
     }
 
     // save num_moves
-    // fprintf(fp, "%d\n", num_moves); //doesnt record moves it didn't make a decision in
-    fprintf(fp, "%d\n", decisions_made[0]);
+    fprintf(fp, "%d\n", num_moves); //doesnt record moves it didn't make a decision in
     for (int i = num_moves-1; i >= 0; --i)
     {
         e->stack_pop();
-        if(no_decision_arr[i] == 1)
-        {
-            continue;
-        }
 
-        // Save Pieces of player whose turn it is (U64)
-        // Save Pieces of other player (U64)
+        // Save Pieces of player whose turn it is (U64). then other player
+        U64 first_pieces;
+        U64 second_pieces;
         if (i % 2 == 0) // Black plays when num_moves is even. Save black first, then white.
         { 
-            // fprintf(fp, "%llu\n%llu\n", e->pos.black_board, e->pos.white_board);
-            load_ull_into_int_arr(e, int_board_loader, e->pos.black_board);
-            for(int j = 0; j < 64; j++)
-            {
-                fprintf(fp, "%i,", int_board_loader[j]);
-            }
-            fprintf(fp, "\n");
-            load_ull_into_int_arr(e, int_board_loader, e->pos.white_board);
-            for(int j = 0; j < 64; j++)
-            {
-                fprintf(fp, "%i,", int_board_loader[j]);
-            }
-            fprintf(fp, "\n");
+            first_pieces = e->pos.black_board;
+            second_pieces = e->pos.white_board;
         }
         else // White plays when num_moves is odd. Save white first, then black.
         {
-            // fprintf(fp, "%llu\n%llu\n", e->pos.white_board, e->pos.black_board);
-            load_ull_into_int_arr(e, int_board_loader, e->pos.white_board);
-            for(int j = 0; j < 64; j++)
-            {
-                fprintf(fp, "%i,", int_board_loader[j]);
-            }
-            fprintf(fp, "\n");
-            load_ull_into_int_arr(e, int_board_loader, e->pos.black_board);
-            for(int j = 0; j < 64; j++)
-            {
-                fprintf(fp, "%i,", int_board_loader[j]);
-            }
-            fprintf(fp, "\n");
+            first_pieces = e->pos.white_board;
+            second_pieces = e->pos.black_board;
         }
+
+        load_ull_into_int_arr(e, int_board_loader, e->pos.black_board);
+        for(int j = 0; j < 64; j++)
+        {
+            fprintf(fp, "%i,", int_board_loader[j]);
+        }
+        fprintf(fp, "\n");
+
+        load_ull_into_int_arr(e, int_board_loader, e->pos.white_board);
+        for(int j = 0; j < 64; j++)
+        {
+            fprintf(fp, "%i,", int_board_loader[j]);
+        }
+        fprintf(fp, "\n");
+
+        fprintf(fp, "%i\n", recorded_moves[i]);
 
         // Save monte carlo search results (64 x 32 bit floats)
         for (int j = 0; j < 64; ++j)
         {
             fprintf(fp, "%f,", MC_chances[i][j]); // MC chances for move i square j
-            // printf("%f, ", MC_chances[i][j]);
         }
-        // exit(0);
         fprintf(fp, "\n");
-        
-        // save the saved value 
-        // fprintf(fp, "%f\n", saved_values[i]);
 
-        // Save if current player won (1 x Int)
-        // i % 2 == 0 for black. result is 0 for black win.
-        // i % 2 == 1 for white. result is 1 for white win.
-        // fprintf(fp, "%d\n", (result == 2 ? 2 : ((i % 2) == result)));
-        
-        multiplier = (2 * (i % 2)) - 1;
-        
+        multiplier = (2 * (i % 2)) - 1;        
         fprintf(fp, "%d\n", result_parsed * multiplier);
     }
 
@@ -312,75 +294,45 @@ void save_timer_info(std::string model_path, int local_rank,
 }
 
 
-/* MRD I copied this from play.cpp but added the MC_chances parameter and the few lines that use it*/
-int play_game(Engine* e, std::vector<MonteCarlo*> players, int* num_moves, float **MC_chances, int* total_MC_chances, 
-                    float *saved_values, int* no_decision_arr, int* decisions_made, bool print_on)
+int play_game(Engine* e, std::vector<MonteCarlo*> players, int* num_moves, float **MC_chances, 
+                    int* total_MC_chances, int* recorded_moves, int print_level)
 {
     int move;
     int* move_list;
-    float *MCc;
-    num_moves[0] = 0;
-    move_list = e->generate_black_moves();
+    float* MCc;
 
-    if (print_on && num_moves[0] == 51) e->print_char();
+    int color = BLACK;
+    int player_tracker = players[BLACK]->get_color();
 
-    while(e->is_not_terminal(move_list, BLACK))
+    if (print_level > 0) e->print_char();
+
+    move_list = e->generate_moves(color);
+    while(e->is_not_terminal(move_list, color))
     {
-        move = players[BLACK]->move(move_list);
-        e->push_black_move(move);
-        if (print_on && num_moves[0] == 51) printf("move number %i\n", num_moves[0]); // && num_moves[0] == 51
-        if (print_on && num_moves[0] == 51) e->print_char();
+        move = players[player_tracker]->move(move_list);
+        e->push_move(move, color);
+
+        if (print_level > 0) printf("move number %i\n", num_moves[0]); // && num_moves[0] == 51
+        if (print_level > 0) e->print_char();
         
-        MC_chances[num_moves[0]] = (float *) calloc(64, sizeof(float));
-        total_MC_chances[0]++;
-        MCc = players[BLACK]->get_saved_action_probs(); // When players was std::vector<Players *>, this errors
-        for (int i = 0; i < 64; ++i) 
-        { 
-            // printf("%f, ", MCc[i]);
-            MC_chances[num_moves[0]][i] = MCc[i]; 
-            // printf("%f, ", MC_chances[num_moves[0]][i]);
-        }
+        std::memcpy(MC_chances[num_moves[0]], players[player_tracker]->get_saved_action_probs(), 
+                                                                            64 * sizeof(float));
 
-        saved_values[num_moves[0]] = players[BLACK]->get_saved_value();
-        no_decision_arr[num_moves[0]] = players[BLACK]->no_decision;
-        decisions_made[0] += (1-players[BLACK]->no_decision);
+        recorded_moves[num_moves[0]] = move;
         num_moves[0]++;
 
-        //TEMP
-        // std::cin.ignore( std::numeric_limits <std::streamsize> ::max(), '\n' );
-        //TEMP
+        if (print_level > 1) std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+        
+        color = 1 - color;
+        player_tracker = 1 - player_tracker;
 
-        move_list = e->generate_white_moves();
-        if(e->is_terminal(move_list, WHITE))
-        {
-            break;
-        }
-        move = players[WHITE]->move(move_list);
-        e->push_white_move(move);
-        if (print_on && num_moves[0] == 51) printf("move number %i\n", num_moves[0]);
-        if (print_on && num_moves[0] == 51) e->print_char();
-        MC_chances[num_moves[0]] = (float *) calloc(64, sizeof(float));
-        MCc = players[WHITE]->get_saved_action_probs();
-        for (int i = 0; i < 64; ++i) 
-        { 
-            MC_chances[num_moves[0]][i] = MCc[i]; 
-        }
-        saved_values[num_moves[0]] = players[WHITE]->get_saved_value();
-        no_decision_arr[num_moves[0]] = players[WHITE]->no_decision;
-        decisions_made[0] += (1-players[WHITE]->no_decision);
-        num_moves[0]++;
-
-        // TEMP
-        // std::cin.ignore( std::numeric_limits <std::streamsize> ::max(), '\n' );
-        // TEMP
-
-        move_list = e->generate_black_moves();
+        move_list = e->generate_moves(color);
     }
     return e->get_winner();
 }
 
 
-void run_params(int local_rank, int games_per_proc, int iterations_per_move, bool print_on)
+void record_games(int local_rank, int games_per_proc, int iterations_per_move, int print_level)
 {
     if (local_rank == -1)
     {
@@ -396,74 +348,78 @@ void run_params(int local_rank, int games_per_proc, int iterations_per_move, boo
 
     Engine* e = new Engine();
 
-    std::chrono::time_point<std::chrono::system_clock> game_start_timer, game_end_timer, wait1_start_timer, wait1_end_timer;
+    std::chrono::time_point<std::chrono::system_clock> game_start_timer, 
+                            game_end_timer, wait1_start_timer, wait1_end_timer;
     std::chrono::duration<double, std::nano> game_time_result, wait1_time_result;
     
 
     // Read in the new neural network model name
-    if (print_on) std::cout << "local_rank: " << local_rank << " about to get model path " << std::endl; 
+    if (print_level > 1) std::cout << "local_rank: " << local_rank 
+                         << " about to get model path " << std::endl; 
     
     std::string model_name = get_newest_model_name();
     std::string model_path = "data/" + model_name;
 
-    if (print_on) std::cout << "local_rank: " << local_rank << " got the newest model dir" << std::endl;
-    if (print_on) std::cout << "local_rank: " << local_rank << " model_name: " << model_name << std::endl;
+    if (print_level > 1) std::cout << "local_rank: " << local_rank 
+                         << " got the newest model dir" << std::endl;
+    if (print_level > 1) std::cout << "local_rank: " << local_rank 
+                         << " model_name: " << model_name << std::endl;
  
-
-
     std::vector<MonteCarlo*> players;
-
-
 
     PyCommunicator* comm = new PyCommunicator(model_name);
     comm->setup_python_communication();
 
-
-
-
-    /* currently, there's an error when a MonteCarlo player tries to play */
-    // black must be pushed onto the vector first
-    players.push_back(new MonteCarlo(BLACK, e, model_name, iterations_per_move, true, 
-                        comm)); // black
-    players.push_back(new MonteCarlo(WHITE, e, model_name, iterations_per_move, true,
-                        comm)); // white
+    players.push_back(new MonteCarlo(BLACK, e, model_name, iterations_per_move, true, comm));
+    players.push_back(new MonteCarlo(WHITE, e, model_name, iterations_per_move, true, comm));
      
     // Variable for the number of moves in the game
     int* num_moves = (int*) calloc(1, sizeof(int));
     int* total_MC_chances = (int*) calloc(1, sizeof(int));
-        
+
+    int* recorded_moves = (int*) calloc(e->get_max_move_length(), sizeof(int));
+
+    int max_MC_chances_per_game = e->get_max_move_length();
+    float** MC_chances = (float**) calloc(max_MC_chances_per_game, sizeof(float*));
+    for(int j = 0; j < max_MC_chances_per_game; j++)
+    {
+        MC_chances[j] = (float*) calloc(64, sizeof(float));
+    }
+
+
     /*~*~*~*~*~ Possibly decrement a game timer here ~*~*~*~*~*/
     game_start_timer = std::chrono::system_clock::now();
+
+
     // Loop over the number of games we're playing per processor per model
     for (int i = 0; i < games_per_proc; ++i)
     {
         total_MC_chances[0] = 0;
-        if(print_on) std::cout << "Playing game " << i + games_per_proc * local_rank << " on processor: " << local_rank << std::endl;
-        float** MC_chances = (float**) calloc(e->get_max_move_length(), sizeof(float*));
-        float* saved_values = (float*) calloc(e->get_max_move_length(), sizeof(float));
-        int* no_decision_arr = (int*) calloc(e->get_max_move_length(), sizeof(int));
-        int* decisions_made = (int*) calloc(1, sizeof(int));
-        // result holds 0 for black win, 1 for white win, and 2 for draw
-        int result = play_game(e, players, num_moves, MC_chances, total_MC_chances, saved_values, no_decision_arr, decisions_made, print_on);
-        // printf("result is%i\n", result);
-        if(print_on) std::cout << "Processor: " << local_rank << " finished playing game, saving data now to path: " << model_path << std::endl;
-        // save the game's info.
-        save_game_info(model_path, local_rank, i, e, num_moves[0], result, MC_chances, saved_values, no_decision_arr, decisions_made);
-        if(print_on) std::cout << "Processor: " << local_rank << " finished saving data, resetting engine now." << std::endl;
+        num_moves[0] = 0;
 
-        // free and reset the engine for a new game
-        for(int j = 0; j < total_MC_chances[0]; j++)
-        {
-            free(MC_chances[j]);
-        }
-        free(MC_chances);
-        free(saved_values);
-        free(no_decision_arr);
-        free(decisions_made);
+        if(print_level > 1) std::cout << "Playing game " << i + games_per_proc * local_rank 
+                                      << " on processor: " << local_rank << std::endl;
+
+        // play_game returns 0 for black win, 1 for white win, and 2 for draw
+        int result = play_game(e, players, num_moves, MC_chances, total_MC_chances, 
+                                recorded_moves, print_level);
+
+        if(print_level > 1) std::cout << "Processor: " << local_rank 
+                            << " finished playing game, saving data now to path: " 
+                            << model_path << std::endl;
+
+        // save the game's info.
+        save_game_info(model_path, local_rank, i, e, num_moves[0], result, MC_chances, recorded_moves);
+
+        if(print_level > 1) std::cout << "Processor: " << local_rank 
+                            << " finished saving data, resetting engine now." << std::endl;
+
         e->reset_engine();
     }
 
-    if (print_on) std::cout << "Processor: " << local_rank << " finished playing and saving " << games_per_proc << " games." << std::endl;
+    if (print_level > 1) std::cout << "Processor: " << local_rank 
+                         << " finished playing and saving " << games_per_proc 
+                         << " games." << std::endl;
         
     /*~*~*~*~*~ Possibly increment game timer here ~*~*~*~*~*/
     game_end_timer = std::chrono::system_clock::now();
@@ -477,15 +433,22 @@ void run_params(int local_rank, int games_per_proc, int iterations_per_move, boo
     wait1_time_result = cast_nano2(wait1_end_timer - wait1_start_timer);
 
 
-    if (print_on) printf("Finished timing, now saving timer info\n");
+    if (print_level > 1) printf("Finished timing, now saving timer info\n");
 
     /*~*~*~ Possibly save all of the timer information ~*~*~*/
     save_timer_info(model_path, local_rank, game_time_result, wait1_time_result);
 
-    if (print_on) printf("Cleaning up engine and players\n");
+    if (print_level > 1) printf("Cleaning up engine and players\n");
 
     /////////////// clean up ///////////////
     
+    free(recorded_moves);
+    for(int j = 0; j < max_MC_chances_per_game; j++)
+    {
+        free(MC_chances[j]);
+    }
+    free(MC_chances);
+
     players[BLACK]->cleanup();
     players[WHITE]->cleanup();
     delete(players[0]);
@@ -502,15 +465,17 @@ void run_params(int local_rank, int games_per_proc, int iterations_per_move, boo
 
     ////////////////////////////////////////
 
-    if (print_on) printf("record_games has finished\n");
+    if (print_level > 1) printf("record_games has finished\n");
 }
 
 
+// ./record_games -ngames 1 -rank 0
 int main(int argc, char * argv[])
 {
     int local_rank = -1; 
     int games_per_proc = -1;
     int iterations_per_move = 100;
+    int print_level = 0;
 
     for (int i = 0; i < argc; ++i)
     {
@@ -522,11 +487,14 @@ int main(int argc, char * argv[])
         {
             games_per_proc = atoi(argv[i+1]);
         }
+        if (strcmp(argv[i], "-print") == 0)
+        {
+            print_level = atoi(argv[i+1]);
+        }
     }
 
     srand(time(NULL)); // seed rand
-    bool print_on = false;
     
-    run_params(local_rank, games_per_proc, iterations_per_move, print_on);
+    record_games(local_rank, games_per_proc, iterations_per_move, print_level);
     return 0;
 }

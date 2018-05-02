@@ -310,7 +310,6 @@ void Engine::push_move(int move, int color)
     }
 }
 
-
 // Takes in a move, alters the BitboardEngine's representation to the NEXT state based on the CURRENT move action
 void Engine::push_white_move(int move)
 {

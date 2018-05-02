@@ -297,6 +297,12 @@ def read_in_games(filename):
                     board2.append(int(_j))
 
                 boards.append(board1+board2)
+
+                # grabbing move_made
+                stripped_line = f.readline().strip()
+                move_made = int(stripped_line)
+                if move_made == -1:
+                    continue
                 
                 # grabbing q_vals
                 arr = []
