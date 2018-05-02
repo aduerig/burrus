@@ -417,12 +417,12 @@ void Driver::run_driver(int games_to_play, int iterations_per_move, std::string 
 
     std::vector<Player*> players;
 
-    // players.push_back(new MonteCarlo(WHITE, e, model_name, iterations_per_move, false,
-                        // pSemaphore, pSharedMemory_code, pSharedMemory_rest)); // white
-    players.push_back(new Rand(BLACK, e)); // black
-    // players.push_back(new Minimax(BLACK, e, depth)); // white
-    players.push_back(new MonteCarlo(WHITE, e, model_name, iterations_per_move, false, 
+    players.push_back(new MonteCarlo(BLACK, e, model_name, iterations_per_move, false,
                         pSemaphore, pSharedMemory_code, pSharedMemory_rest)); // white
+    players.push_back(new Rand(WHITE, e)); // black
+    // players.push_back(new Minimax(BLACK, e, depth)); // white
+    // players.push_back(new MonteCarlo(WHITE, e, model_name, iterations_per_move, false, 
+                        // pSemaphore, pSharedMemory_code, pSharedMemory_rest)); // white
 
     // Variable for the number of moves in the game
     int* num_moves = (int*) calloc(1, sizeof(int));

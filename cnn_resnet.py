@@ -13,6 +13,7 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 GLOBAL_LEARNING_RATE = .001
 GLOBAL_TRAINING_STEPS = 101
 GLOBAL_BATCH_SIZE = 32
+NUM_MODELS_REACH_BACK = 2000
 
 MODELS_DIRECTORY = 'data'
 
@@ -252,7 +253,7 @@ def get_data(size, old_model_dir):
     model_count = len(next(os.walk('data'))[1])
     game_locs = []
 
-    for i in range(max(0, model_count-15), model_count):
+    for i in range(max(0, model_count-NUM_MODELS_REACH_BACK), model_count):
         curr_path = os.path.join('data', 'model_' + str(i), 'games', 'all_games.game')
         x,y,z = read_in_games(curr_path)
         x_train += x
@@ -377,7 +378,7 @@ def train():
     # total_loss = .5 * policy_loss + .5 * value_loss + reg_term
     # total_loss = .5 * value_loss + reg_term
     # total_loss = .01 * value_loss + policy_loss + reg_term
-    total_loss = value_loss + policy_loss + reg_term
+    total_loss = .05 * value_loss + policy_loss + reg_term
 
     # for training batchnorm features
     # https://www.tensorflow.org/api_docs/python/tf/layers/batch_normalization

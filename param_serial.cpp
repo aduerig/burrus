@@ -321,10 +321,12 @@ int Params::play_game(Engine* e, std::vector<MonteCarlo*> players, int* num_move
         MCc = players[BLACK]->get_saved_action_probs(); // When players was std::vector<Players *>, this errors
         for (int i = 0; i < 64; ++i) 
         { 
+            // printf("%f, ", MCc[i]);
             MC_chances[num_moves[0]][i] = MCc[i]; 
             // printf("%f, ", MC_chances[num_moves[0]][i]);
         }
         // printf("\n");
+        // exit(0);
         saved_values[num_moves[0]] = players[BLACK]->get_saved_value();
         no_decision_arr[num_moves[0]] = players[BLACK]->no_decision;
         decisions_made[0] += (1-players[BLACK]->no_decision);
@@ -777,7 +779,7 @@ int main(int argc, char * argv[])
 {
     int local_rank = -1; 
     int games_per_proc = -1;
-    int iterations_per_move = 50;
+    int iterations_per_move = 100;
 
     for (int i = 0; i < argc; ++i)
     {

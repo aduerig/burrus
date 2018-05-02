@@ -46,7 +46,7 @@ def main():
 
         all_calced_values = []
         all_true_values = []
-        num_batches_to_go = 1
+        num_batches_to_go = 10
         # to_run = next(data_gen)
         for i in range(num_batches_to_go):
             to_run = next(data_gen)
@@ -76,6 +76,9 @@ def main():
                 print("in pass:")
                 print(policy_calced[j])
                 print(value_calced[j])
+
+                # print("true:", curr_batch_y_true_value[j][0], "predicted:", value_calced[j][0])
+
 
                 # all_true_values.append(curr_batch_y_true_value[j][0])
                 # all_calced_values.append(value_calced[j][0])

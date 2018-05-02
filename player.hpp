@@ -121,6 +121,7 @@ class MonteCarlo: public Player
         Node* max_child_visits(Node* node);
         float compute_puct(Node* node);
         int node_argmax(Node* node, int num_nodes);
+        Node* choose_node_random(Node* node);
         void calc_action_probs(Node* node);
         void cleanup();
 

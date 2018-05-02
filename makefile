@@ -1,6 +1,6 @@
 CC = g++
 MPICC = mpic++
-CFLAGS = -std=c++14 -Ofast -Wall -Wno-unused-variable -Wno-unused-value -Wno-comment -Wno-unused-but-set-variable -Wno-maybe-uninitialized -Wno-delete-non-virtual-dtor -g
+CFLAGS = -std=c++14 -O1 -Wall -Wno-unused-variable -Wno-unused-value -Wno-comment -Wno-unused-but-set-variable -Wno-maybe-uninitialized -Wno-delete-non-virtual-dtor -g
 DRIVER_HEADERS = engine.hpp player.hpp driver.hpp
 PLAY_HEADERS = engine.hpp player.hpp
 PARAM_HEADERS = engine.hpp player.hpp param_serial.hpp
