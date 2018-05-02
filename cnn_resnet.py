@@ -8,14 +8,14 @@ import tensorflow as tf
 import os
 import random
 
+import utils
+
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
 
 GLOBAL_LEARNING_RATE = .001
 GLOBAL_TRAINING_STEPS = 101
 GLOBAL_BATCH_SIZE = 32
 NUM_MODELS_REACH_BACK = 2000
-
-MODELS_DIRECTORY = 'data'
 
 
 # may be training weirdness:
@@ -192,40 +192,6 @@ def create_policy_head(x, train_bool):
     return softmaxed_move_space
 
 
-# generators will loop forever if batch_size > samples, also it has the chance to miss a
-# few samples each iteration, though they all have equal probability, so it shouldnt matter
-def get_inf_batch_gens(data, size):
-    # data is deterministic up to here
-    sample_length = data[0].shape[0] # 40762
-    curr = sample_length
-    loop = 0
-
-    if size == 0:
-        print("get_inf_batch_gens: cant have batch size 0, quitting")
-        exit(0)
-    
-    if sample_length == 0:
-        print("get_inf_batch_gens: passed 0 samples, quitting")
-        exit(0)
-    
-    while True:
-        if curr+size > sample_length:
-            curr = 0
-            rng_state = np.random.get_state()
-            np.random.shuffle(data[0])
-            np.random.set_state(rng_state)
-            np.random.shuffle(data[1])
-            np.random.set_state(rng_state)
-            np.random.shuffle(data[2])
-            loop += 1
-            continue
-        x = data[0][curr:curr+size]
-        q_vals = data[1][curr:curr+size]
-        true_result = data[2][curr:curr+size]
-        curr += size
-        yield x, q_vals, true_result
-
-
 def get_model_directories():
     # get newest model directory
     data_dir_name = 'data'
@@ -236,7 +202,7 @@ def get_model_directories():
         print('MODEL: making data directory at {0}', data_dir)
         os.mkdir(data_dir)
 
-    newest_model = len(next(os.walk(data_dir))[1])
+    newest_model = len(os.listdir(data_dir))
     older_model = newest_model - 1
 
     # if there is no models avaliable we must start from scratch
@@ -246,81 +212,10 @@ def get_model_directories():
     return os.path.join(data_dir, 'model_' + str(older_model)), os.path.join(data_dir, 'model_' + str(newest_model))
 
 
-def get_data(size, old_model_dir):
-    x_train = []
-    y_policy_labels = []
-    y_true_value = []
-    model_count = len(next(os.walk('data'))[1])
-    game_locs = []
-
-    for i in range(max(0, model_count-NUM_MODELS_REACH_BACK), model_count):
-        curr_path = os.path.join('data', 'model_' + str(i), 'games', 'all_games.game')
-        x,y,z = read_in_games(curr_path)
-        x_train += x
-        y_policy_labels += y
-        y_true_value += z
-
-    x_train = np.array(x_train)
-    y_policy_labels = np.array(y_policy_labels)
-    y_true_value = np.array(y_true_value)
-
-    train = [x_train, y_policy_labels, y_true_value]
-    return get_inf_batch_gens(train, size)
-
-def bitfield(n):
-    return [n >> i & 1 for i in range(63, -1, -1)]
-
-def read_in_games(filename):
-    boards = []
-    evals = []
-    results = []
-    if not os.path.exists(filename):
-        print("couldn't find games for path: " + filename)
-        return boards, evals, results
-    with open(filename, "r") as f:
-        while True:
-            move_count = f.readline()
-            if not move_count:
-                break
-            for i in range(int(move_count)):
-                # Grabbing board states
-                board1 = []
-                stripped_line = f.readline().strip()
-                splitted_arr = stripped_line.split(',')[:-1]
-                for _j in splitted_arr:
-                    board1.append(int(_j))
-               
-                board2 = []
-                stripped_line = f.readline().strip()
-                splitted_arr = stripped_line.split(',')[:-1]
-                for _j in splitted_arr:
-                    board2.append(int(_j))
-
-                boards.append(board1+board2)
-
-                # grabbing move_made
-                stripped_line = f.readline().strip()
-                move_made = int(stripped_line)
-                if move_made == -1:
-                    continue
-                
-                # grabbing q_vals
-                arr = []
-                stripped_line = f.readline().strip()
-                splitted_arr = stripped_line.split(',')[:-1]
-                for _j in splitted_arr:
-                    arr.append(float(_j))
-                evals.append(arr)
-
-                # grabbing final result
-                stripped_line = f.readline().strip()
-                results.append([int(stripped_line)])
-    print("loaded {0} board states".format(len(boards)))
-    return boards, evals, results
-
 # returns 1 when successful
 def train():
-    concat_files()
+    utils.concat_files()
+
     x = tf.placeholder(tf.float32, shape=(None, 128), name='x')
     train_bool = tf.placeholder(tf.bool, name='train_bool')
     y_policy_labels = tf.placeholder(tf.float32, shape=(None, 64), name='y_policy_labels')
@@ -380,10 +275,6 @@ def train():
     trainables = tf.trainable_variables()
     reg_term = tf.contrib.layers.apply_regularization(regularizer, trainables)
 
-
-    # total_loss = .5 * policy_loss + .5 * value_loss + reg_term
-    # total_loss = .5 * value_loss + reg_term
-    # total_loss = .01 * value_loss + policy_loss + reg_term
     total_loss = .05 * value_loss + policy_loss + reg_term
 
     # for training batchnorm features
@@ -405,9 +296,6 @@ def train():
     # create a saver (could need different arg passed)
     # tf.trainable_variables() + extra_update_ops
 
-
-
-
     saver = tf.train.Saver()
 
     # training
@@ -423,7 +311,7 @@ def train():
             return 1
             
         saver.restore(sess, os.path.join(old_model_dir, 'model.ckpt'))
-        train_batch_gen = get_data(GLOBAL_BATCH_SIZE, old_model_dir)
+        train_batch_gen = utils.get_data(GLOBAL_BATCH_SIZE, NUM_MODELS_REACH_BACK)
         if train_batch_gen is None:
             print("No games found, exiting...")
             return -1
@@ -442,42 +330,15 @@ def train():
                             train_bool: True})
                 print('step {0}, training accuracy_policy {1}, training accuracy_value {2}'.format(i, 
                             a_p, a_v))
-            _, p_res, v_res = sess.run([train_step, policy_head, value_head], feed_dict={x: curr_batch_x, 
-                            y_policy_labels: curr_batch_y_policy_labels, 
+            _ = sess.run([train_step], feed_dict={
+                            x: curr_batch_x, y_policy_labels: curr_batch_y_policy_labels, 
                             y_true_value: curr_batch_y_true_value,
                             train_bool: True})
-
-            # policy
-            # print(p_res)
-            # total = 0
-            # for o in p_res:
-            #     for j in o:
-            #         if j < 0:
-            #             total += 1
-            # print(64 * GLOBAL_BATCH_SIZE, total)
 
         os.mkdir(new_model_dir)
         os.mkdir(os.path.join(new_model_dir, 'games'))
         saver.save(sess, os.path.join(new_model_dir, 'model.ckpt'))
     return 1
-
-def concat_files():
-    out_filename = 'all_games.game'
-    if not os.path.isdir(MODELS_DIRECTORY):
-        return
-    model_count = len(next(os.walk(MODELS_DIRECTORY))[1])-1
-    latest_model_path = 'model_' + str(model_count)
-    path = os.path.join(MODELS_DIRECTORY, latest_model_path, 'games')
-    if not os.path.isdir(path) or len(os.listdir(path)) == 0:
-        return
-    if os.path.exists(os.path.join(path, out_filename)):
-        return
-    with open(os.path.join(path, out_filename), 'wb+') as outfile:
-        for file in os.listdir(path):
-            if file == out_filename or file[-5:] != '.game':
-                continue
-            with open(os.path.join(path, file), 'rb') as readfile:
-                outfile.write(readfile.read())
 
 def main():
     train()
