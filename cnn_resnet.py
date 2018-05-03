@@ -24,12 +24,6 @@ NUM_MODELS_REACH_BACK = 2000
 # may be needed to train batchnorm features
 
 
-# to interact with the gpu, make sure the following are loaded
-# slurm/default and psc_path/1.1
-# then interact -gpu
-# then module load tensorflow/1.5_gpu
-
-
 # - conv bloc is:
 #     - 128 filters of kernal size 3x3 with stride 1 (orig paper is 256)
 #     - batch norm
@@ -63,7 +57,6 @@ def cnn_block(x, train_bool, block_num):
 
     # relu
     relu = tf.nn.relu(conv_bn_layer, name='cnn_block_' + block_num + '_relu')
-
     return relu
 
 def resid_block(x, train_bool, block_num):
@@ -215,6 +208,7 @@ def get_model_directories():
 # returns 1 when successful
 def train():
     utils.concat_files()
+    utils.count_identical_board_pos()
 
     x = tf.placeholder(tf.float32, shape=(None, 128), name='x')
     train_bool = tf.placeholder(tf.bool, name='train_bool')
@@ -321,7 +315,7 @@ def train():
             curr_batch_x = curr_batch_holder[0]
             curr_batch_y_policy_labels = curr_batch_holder[1]
             curr_batch_y_true_value = curr_batch_holder[2]
-            if i % 100 == 0:
+            if i % 30 == 0:
                 a_p = accuracy_policy.eval(feed_dict={
                         x: curr_batch_x, y_policy_labels: curr_batch_y_policy_labels,
                             train_bool: True})

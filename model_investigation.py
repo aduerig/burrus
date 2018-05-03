@@ -39,15 +39,15 @@ def main():
         updaters = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
         var = tf.trainable_variables()
 
-        for v in updaters:
-            print(v)
-            print('')
+        # for v in updaters:
+        #     print(v)
+        #     print('')
 
-        for v in var:
-            print(v)
-            print(sess.run(v))
-            print('')
-        print('')
+        # for v in var:
+        #     print(v)
+        #     print(sess.run(v))
+        #     print('')
+        # print('')
 
 
         all_calced_values = []
@@ -65,19 +65,19 @@ def main():
             policy_calced = res[0]
             value_calced = res[1]
 
-            print(curr_batch_y_true_value)
-            print(value_calced)
+            # print(curr_batch_y_true_value)
+            # print(value_calced)
 
-            for j in range(policy_calced.shape[0]):
-                utils.print_board(curr_batch_x[j])
+            # for j in range(policy_calced.shape[0]):
+            #     utils.print_board(curr_batch_x[j])
                 
-                print("true values:")
-                print(curr_batch_y_policy_labels[j])
-                print(curr_batch_y_true_value[j])
+            #     print("true values:")
+            #     print(curr_batch_y_policy_labels[j])
+            #     print(curr_batch_y_true_value[j])
 
-                print("in pass:")
-                print(policy_calced[j])
-                print(value_calced[j])
+            #     print("in pass:")
+            #     print(policy_calced[j])
+            #     print(value_calced[j])
 
                 # print("true:", curr_batch_y_true_value[j][0], "predicted:", value_calced[j][0])
 
