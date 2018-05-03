@@ -13,10 +13,13 @@ def main():
         # tf.set_random_seed(0)
         
         model_dir = utils.get_model_dir('recent')
+        if model_dir == None:
+            print("could not find model, exiting...")
+            exit()
         # model_dir = utils.get_model_dir('model_0')
         print('Using model at: ' + model_dir)
 
-        batch_size = 5
+        batch_size = 1
 
         # t1 = time.time()
         data_gen = utils.get_data(batch_size, 15)
@@ -49,6 +52,8 @@ def main():
         #     print('')
         # print('')
 
+        x_reshaped_test = tf.reshape(x_tensor, [-1, 8, 8, 2])
+
 
         all_calced_values = []
         all_true_values = []
@@ -59,11 +64,20 @@ def main():
             curr_batch_x = to_run[0]
             curr_batch_y_policy_labels = to_run[1]
             curr_batch_y_true_value = to_run[2]
-            
-            res = sess.run([policy_head_output, value_head_output], feed_dict={x_tensor: curr_batch_x, train_bool: False})
 
-            policy_calced = res[0]
-            value_calced = res[1]
+            res = sess.run([x_reshaped_test], 
+                                feed_dict={x_tensor: curr_batch_x})
+
+            print(res[0][0])
+            print(res[0].shape)
+            print(res[0][0].shape)
+            exit()
+            
+            # res = sess.run([policy_head_output, value_head_output], 
+            #                     feed_dict={x_tensor: curr_batch_x, train_bool: False})
+
+            # policy_calced = res[0]
+            # value_calced = res[1]
 
             # print(curr_batch_y_true_value)
             # print(value_calced)

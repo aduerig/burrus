@@ -203,10 +203,10 @@ void run_driver(int games_to_play, int iterations_per_move, std::string model_na
 
     ///////////////////////////////////////
 
-    printf("driver has finished\n");
+    if (print_level > 0) printf("driver has finished\n");
 }
 
-// ./driver -iter 20 -ngames 10 -name model_0
+// ./play_test_games -iter 20 -ngames 10 -name model_0
 int main(int argc, char * argv[])
 {
     int iterations_per_move = 50; 

@@ -159,6 +159,9 @@ void save_game_info(std::string model_path, int local_rank, int game_number, Eng
     {
         e->stack_pop();
 
+        // save move made
+        fprintf(fp, "%i\n", recorded_moves[i]);
+
         // Save Pieces of player whose turn it is (U64). then other player
         U64 first_pieces;
         U64 second_pieces;
@@ -188,8 +191,6 @@ void save_game_info(std::string model_path, int local_rank, int game_number, Eng
             if(j < 63) { fprintf(fp, ","); }
         }
         fprintf(fp, "\n");
-
-        fprintf(fp, "%i\n", recorded_moves[i]);
 
         // Save monte carlo search results (64 x 32 bit floats)
         for (int j = 0; j < 64; ++j)
@@ -477,7 +478,7 @@ int main(int argc, char * argv[])
 {
     int local_rank = -1; 
     int games_per_proc = -1;
-    int iterations_per_move = 100;
+    int iterations_per_move = 50;
     int print_level = 0;
 
     for (int i = 0; i < argc; ++i)
@@ -490,6 +491,10 @@ int main(int argc, char * argv[])
         {
             games_per_proc = atoi(argv[i+1]);
         }
+        if (strcmp(argv[i],"-iter") == 0)
+        {
+            iterations_per_move = atoi(argv[i+1]);
+        }
         if (strcmp(argv[i], "-print") == 0)
         {
             print_level = atoi(argv[i+1]);
@@ -497,7 +502,6 @@ int main(int argc, char * argv[])
     }
 
     srand(time(NULL)); // seed rand
-    
     record_games(local_rank, games_per_proc, iterations_per_move, print_level);
     return 0;
 }

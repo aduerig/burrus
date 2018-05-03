@@ -21,8 +21,9 @@ def print_board(b):
 
 
 def get_model_dir(name):
-    data_dir_name = 'data'
-    data_dir = os.path.abspath(os.path.join(os.getcwd(), data_dir_name))
+    if not os.path.isdir(MAIN_DATA_DIRECTORY):
+        return
+    data_dir = os.path.join(os.getcwd(), MAIN_DATA_DIRECTORY)
     
     if name == 'recent':
         newest_model = len(os.listdir(data_dir))-1
@@ -32,6 +33,8 @@ def get_model_dir(name):
 
 
 def get_games_dir(name):
+    if not os.path.isdir(MAIN_DATA_DIRECTORY):
+        return
     return os.path.join(get_model_dir(name), 'games')
 
 
@@ -48,6 +51,16 @@ def read_in_games(filename):
             if not move_count:
                 break
             for i in range(int(move_count)):
+                # grabbing move_made
+                stripped_line = f.readline()
+                move_made = int(stripped_line)
+                if move_made == -1:
+                    f.readline()
+                    f.readline()
+                    f.readline()
+                    f.readline()
+                    continue
+
                 # Grabbing board states
                 board1 = []
                 stripped_line = f.readline()
@@ -62,14 +75,6 @@ def read_in_games(filename):
                     board2.append(int(_j))
 
                 boards.append(board1+board2)
-                
-                # grabbing move_made
-                stripped_line = f.readline()
-                move_made = int(stripped_line)
-                if move_made == -1:
-                    f.readline()
-                    f.readline()
-                    continue
 
                 # grabbing q_vals
                 arr = []
@@ -82,6 +87,9 @@ def read_in_games(filename):
                 # grabbing final result
                 stripped_line = f.readline()
                 results.append([int(stripped_line)])
+    # print(results)
+    # print(boards)
+    # exit()
     print("loaded {0} board states".format(len(boards)))
     return boards, evals, results
 
@@ -144,9 +152,7 @@ def concat_files():
     out_filename = 'all_games.game'
     if not os.path.isdir(MAIN_DATA_DIRECTORY):
         return
-    model_count = len(os.listdir(MAIN_DATA_DIRECTORY))-1
-    latest_model_path = 'model_' + str(model_count)
-    path = os.path.join(MAIN_DATA_DIRECTORY, latest_model_path, 'games')
+    path = get_games_dir("recent")
     
     # checking that directory exists
     if not os.path.isdir(path):
@@ -176,13 +182,10 @@ def concat_files():
             continue
         # print(os.path.join(path, p))
         os.remove(os.path.join(path, p))
-    exit()
-
 
 
 def u64_to_array(n):
     return [n >> i & 1 for i in range(63, -1, -1)]
-
 
 
 # generators will loop forever if batch_size > samples, also it has the chance to miss a
@@ -219,12 +222,15 @@ def get_inf_batch_gens(data, size):
         yield x, q_vals, true_result
 
 
-
 def count_identical_board_pos(games_dir=None):
+    if not os.path.isdir(MAIN_DATA_DIRECTORY):
+        return
     if games_dir == None:
         games_dir = get_games_dir("recent")
 
     curr_path = os.path.join(games_dir, 'all_games.game')
+    if not os.path.exists(curr_path):
+        return
     x, _, _ = read_in_games(curr_path)
 
     count = 0
@@ -237,9 +243,8 @@ def count_identical_board_pos(games_dir=None):
 
     count = len(hasher) / len(x)
 
-    print("{0}/{1} are unique, {2}% ratio, from: {3}".format(len(hasher), len(x), count, games_dir))
+    print("{0}/{1} are unique, {2}% ratio, from: {3}".format(len(hasher), len(x), round(count*100, 2), games_dir))
     return count
-
 
 
 def get_data(size, num_models_reach_back):
@@ -257,8 +262,6 @@ def get_data(size, num_models_reach_back):
         # t2 = time.time()
 
         # print("subtime taken: {0}".format(t2-t1))
-
-
         x_train += x
         y_policy_labels += y
         y_true_value += z

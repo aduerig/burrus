@@ -47,7 +47,7 @@ def cnn_block(x, train_bool, block_num):
     # batchnorm
     conv_bn_layer = tf.layers.batch_normalization(
         inputs=conv_layer,
-        axis=-1,
+        axis=3,
         momentum=0.99,
         epsilon=0.001,
         center=True,
@@ -74,7 +74,7 @@ def resid_block(x, train_bool, block_num):
     # batchnorm
     conv_bn_layer = tf.layers.batch_normalization(
         inputs=conv_layer,
-        axis=-1,
+        axis=3,
         momentum=0.99,
         epsilon=0.001,
         center=True,
@@ -97,7 +97,7 @@ def resid_block(x, train_bool, block_num):
     # batchnorm2
     conv2_bn_layer = tf.layers.batch_normalization(
         inputs=conv2_layer,
-        axis=-1,
+        axis=3,
         momentum=0.99,
         epsilon=0.001,
         center=True,
@@ -127,7 +127,7 @@ def create_value_head(x, train_bool):
     # batchnorm
     conv_bn_layer = tf.layers.batch_normalization(
         inputs=conv_layer,
-        axis=-1,
+        axis=3,
         momentum=0.99,
         epsilon=0.001,
         center=True,
@@ -141,11 +141,13 @@ def create_value_head(x, train_bool):
 
     flattened_value = tf.reshape(first_relu, [-1, 8*8])
 
-    hidden_layer = tf.layers.dense(inputs=flattened_value, units = 32, name='value_head_dense_to_dense') # orig is 256
+    hidden_layer = tf.layers.dense(inputs=flattened_value, units = 32, 
+                                    name='value_head_dense_to_dense') # orig is 256
 
     final_relu = tf.nn.relu(hidden_layer, name='value_head_relu2')
 
-    board_value_not_capped = tf.layers.dense(inputs=final_relu, units = 1, name='value_head_dense_to_scaler')
+    board_value_not_capped = tf.layers.dense(inputs=final_relu, units = 1, 
+                                name='value_head_dense_to_scaler')
 
     board_value = tf.nn.tanh(board_value_not_capped, name='value_head_output')
 
@@ -165,7 +167,7 @@ def create_policy_head(x, train_bool):
     # batchnorm
     conv_bn_layer = tf.layers.batch_normalization(
         inputs=conv_layer,
-        axis=-1,
+        axis=3,
         momentum=0.99,
         epsilon=0.001,
         center=True,
@@ -269,7 +271,7 @@ def train():
     trainables = tf.trainable_variables()
     reg_term = tf.contrib.layers.apply_regularization(regularizer, trainables)
 
-    total_loss = .05 * value_loss + policy_loss + reg_term
+    total_loss = value_loss + policy_loss + reg_term
 
     # for training batchnorm features
     # https://www.tensorflow.org/api_docs/python/tf/layers/batch_normalization
@@ -315,6 +317,8 @@ def train():
             curr_batch_x = curr_batch_holder[0]
             curr_batch_y_policy_labels = curr_batch_holder[1]
             curr_batch_y_true_value = curr_batch_holder[2]
+
+            
             if i % 30 == 0:
                 a_p = accuracy_policy.eval(feed_dict={
                         x: curr_batch_x, y_policy_labels: curr_batch_y_policy_labels,
@@ -324,10 +328,12 @@ def train():
                             train_bool: True})
                 print('step {0}, training accuracy_policy {1}, training accuracy_value {2}'.format(i, 
                             a_p, a_v))
+
             _ = sess.run([train_step], feed_dict={
                             x: curr_batch_x, y_policy_labels: curr_batch_y_policy_labels, 
                             y_true_value: curr_batch_y_true_value,
                             train_bool: True})
+
 
         os.mkdir(new_model_dir)
         os.mkdir(os.path.join(new_model_dir, 'games'))
@@ -335,7 +341,7 @@ def train():
     return 1
 
 def main():
-    train()
+    return train()
 
 if __name__ == "__main__":
     main()
