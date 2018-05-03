@@ -2,11 +2,13 @@ import tensorflow as tf
 import numpy as np
 import utils
 import os
+import time
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
 
 def main():
     with tf.Session() as sess:
+        utils.concat_files()
         # np.random.seed(0)
         # tf.set_random_seed(0)
         
@@ -15,7 +17,13 @@ def main():
         print('Using model at: ' + model_dir)
 
         batch_size = 5
+
+        # t1 = time.time()
         data_gen = utils.get_data(batch_size, 15)
+        # t2 = time.time()
+
+        # print("time taken: {0}".format(t2-t1))
+        # exit()
 
         saver = tf.train.import_meta_graph(os.path.join(model_dir, 'model.ckpt.meta'))
         graph = tf.get_default_graph()

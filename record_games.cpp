@@ -176,14 +176,16 @@ void save_game_info(std::string model_path, int local_rank, int game_number, Eng
         load_ull_into_int_arr(e, int_board_loader, e->pos.black_board);
         for(int j = 0; j < 64; j++)
         {
-            fprintf(fp, "%i,", int_board_loader[j]);
+            fprintf(fp, "%i", int_board_loader[j]);
+            if(j < 63) { fprintf(fp, ","); }
         }
         fprintf(fp, "\n");
 
         load_ull_into_int_arr(e, int_board_loader, e->pos.white_board);
         for(int j = 0; j < 64; j++)
         {
-            fprintf(fp, "%i,", int_board_loader[j]);
+            fprintf(fp, "%i", int_board_loader[j]);
+            if(j < 63) { fprintf(fp, ","); }
         }
         fprintf(fp, "\n");
 
@@ -192,7 +194,8 @@ void save_game_info(std::string model_path, int local_rank, int game_number, Eng
         // Save monte carlo search results (64 x 32 bit floats)
         for (int j = 0; j < 64; ++j)
         {
-            fprintf(fp, "%f,", MC_chances[i][j]); // MC chances for move i square j
+            fprintf(fp, "%f", MC_chances[i][j]); // MC chances for move i square j
+            if(j < 63) { fprintf(fp, ","); }
         }
         fprintf(fp, "\n");
 

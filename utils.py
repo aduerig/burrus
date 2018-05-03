@@ -1,5 +1,6 @@
 import os
 import numpy as np
+import time
 
 MAIN_DATA_DIRECTORY = 'data'
 
@@ -48,21 +49,21 @@ def read_in_games(filename):
             for i in range(int(move_count)):
                 # Grabbing board states
                 board1 = []
-                stripped_line = f.readline().strip()
-                splitted_arr = stripped_line.split(',')[:-1]
+                stripped_line = f.readline()
+                splitted_arr = stripped_line.split(',')
                 for _j in splitted_arr:
                     board1.append(int(_j))
                
                 board2 = []
-                stripped_line = f.readline().strip()
-                splitted_arr = stripped_line.split(',')[:-1]
+                stripped_line = f.readline()
+                splitted_arr = stripped_line.split(',')
                 for _j in splitted_arr:
                     board2.append(int(_j))
 
                 boards.append(board1+board2)
                 
                 # grabbing move_made
-                stripped_line = f.readline().strip()
+                stripped_line = f.readline()
                 move_made = int(stripped_line)
                 if move_made == -1:
                     f.readline()
@@ -71,14 +72,14 @@ def read_in_games(filename):
 
                 # grabbing q_vals
                 arr = []
-                stripped_line = f.readline().strip()
-                splitted_arr = stripped_line.split(',')[:-1]
+                stripped_line = f.readline()
+                splitted_arr = stripped_line.split(',')
                 for _j in splitted_arr:
                     arr.append(float(_j))
                 evals.append(arr)
 
                 # grabbing final result
-                stripped_line = f.readline().strip()
+                stripped_line = f.readline()
                 results.append([int(stripped_line)])
     print("loaded {0} board states".format(len(boards)))
     return boards, evals, results
@@ -101,21 +102,21 @@ def read_in_games_split_moves(filename):
             for i in range(int(move_count)):
                 # Grabbing board states
                 board1 = []
-                stripped_line = f.readline().strip()
-                splitted_arr = stripped_line.split(',')[:-1]
+                stripped_line = f.readline()
+                splitted_arr = stripped_line.split(',')
                 for _j in splitted_arr:
                     board1.append(int(_j))
                
                 board2 = []
-                stripped_line = f.readline().strip()
-                splitted_arr = stripped_line.split(',')[:-1]
+                stripped_line = f.readline()
+                splitted_arr = stripped_line.split(',')
                 for _j in splitted_arr:
                     board2.append(int(_j))
 
-                boards.append(board1+board2)
+                boards.append(board1 + board2)
                 
                 # grabbing move_made
-                stripped_line = f.readline().strip()
+                stripped_line = f.readline()
                 move_made = int(stripped_line)
                 if move_made == -1:
                     f.readline()
@@ -124,14 +125,14 @@ def read_in_games_split_moves(filename):
 
                 # grabbing q_vals
                 arr = []
-                stripped_line = f.readline().strip()
-                splitted_arr = stripped_line.split(',')[:-1]
+                stripped_line = f.readline()
+                splitted_arr = stripped_line.split(',')
                 for _j in splitted_arr:
                     arr.append(float(_j))
                 evals.append(arr)
 
                 # grabbing final result
-                stripped_line = f.readline().strip()
+                stripped_line = f.readline()
                 results.append([int(stripped_line)])
             game_holder.append([list(reversed(boards)), list(reversed(evals)), list(reversed(results))])
     print("loaded {0} games".format(len(game_holder)))
@@ -205,7 +206,14 @@ def get_data(size, num_models_reach_back):
 
     for i in range(max(0, model_count-num_models_reach_back), model_count):
         curr_path = os.path.join('data', 'model_' + str(i), 'games', 'all_games.game')
+
+        # t1 = time.time()
         x,y,z = read_in_games(curr_path)
+        # t2 = time.time()
+
+        # print("subtime taken: {0}".format(t2-t1))
+
+
         x_train += x
         y_policy_labels += y
         y_true_value += z
