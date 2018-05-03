@@ -1,6 +1,7 @@
 import os
 import numpy as np
 import time
+from collections import defaultdict
 
 MAIN_DATA_DIRECTORY = 'data'
 
@@ -216,6 +217,29 @@ def get_inf_batch_gens(data, size):
         true_result = data[2][curr:curr+size]
         curr += size
         yield x, q_vals, true_result
+
+
+
+def count_identical_board_pos(games_dir=None):
+    if games_dir == None:
+        games_dir = get_games_dir("recent")
+
+    curr_path = os.path.join(games_dir, 'all_games.game')
+    x, _, _ = read_in_games(curr_path)
+
+    count = 0
+    hasher = defaultdict(int)
+    for i in x:
+        builder = ""
+        for num in i:
+            builder += str(num)
+        hasher[builder] += 1
+
+    count = len(hasher) / len(x)
+
+    print("{0}/{1} are unique, {2}% ratio, from: {3}".format(len(hasher), len(x), count, games_dir))
+    return count
+
 
 
 def get_data(size, num_models_reach_back):

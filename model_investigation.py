@@ -109,6 +109,7 @@ def main():
 
         # print(tf.trainable_variables())
         # print(GraphKeys.TRAINABLE_VARIABLES)
+        utils.count_identical_board_pos()
 
 
 if __name__ == "__main__":
