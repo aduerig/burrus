@@ -146,16 +146,37 @@ def concat_files():
     model_count = len(os.listdir(MAIN_DATA_DIRECTORY))-1
     latest_model_path = 'model_' + str(model_count)
     path = os.path.join(MAIN_DATA_DIRECTORY, latest_model_path, 'games')
-    if not os.path.isdir(path) or len(os.listdir(path)) == 0:
+    
+    # checking that directory exists
+    if not os.path.isdir(path):
         return
+
+    # And that files are in the directory
+    directories = os.listdir(path)
+    if len(directories) == 0:
+        return
+
+    # checking if combined file already exists
     if os.path.exists(os.path.join(path, out_filename)):
         return
+    
+    # combining all
     with open(os.path.join(path, out_filename), 'wb+') as outfile:
         for file in os.listdir(path):
             if file == out_filename or file[-5:] != '.game':
                 continue
             with open(os.path.join(path, file), 'rb') as readfile:
                 outfile.write(readfile.read())
+
+    # deleting useless files
+    for p in directories:
+        filename, file_extension = os.path.splitext(p)
+        if file_extension == '.timers' or filename == "all_games":
+            continue
+        # print(os.path.join(path, p))
+        os.remove(os.path.join(path, p))
+    exit()
+
 
 
 def u64_to_array(n):
