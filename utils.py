@@ -84,6 +84,60 @@ def read_in_games(filename):
     return boards, evals, results
 
 
+def read_in_games_split_moves(filename):
+    if not os.path.exists(filename):
+        print("couldn't find games for path: " + filename)
+        return boards, evals, results
+    game_holder = []
+    with open(filename, "r") as f:
+        while True:
+            move_count = f.readline()
+            if not move_count:
+                break            
+            boards = []
+            evals = []
+            results = []
+            
+            for i in range(int(move_count)):
+                # Grabbing board states
+                board1 = []
+                stripped_line = f.readline().strip()
+                splitted_arr = stripped_line.split(',')[:-1]
+                for _j in splitted_arr:
+                    board1.append(int(_j))
+               
+                board2 = []
+                stripped_line = f.readline().strip()
+                splitted_arr = stripped_line.split(',')[:-1]
+                for _j in splitted_arr:
+                    board2.append(int(_j))
+
+                boards.append(board1+board2)
+                
+                # grabbing move_made
+                stripped_line = f.readline().strip()
+                move_made = int(stripped_line)
+                if move_made == -1:
+                    f.readline()
+                    f.readline()
+                    continue
+
+                # grabbing q_vals
+                arr = []
+                stripped_line = f.readline().strip()
+                splitted_arr = stripped_line.split(',')[:-1]
+                for _j in splitted_arr:
+                    arr.append(float(_j))
+                evals.append(arr)
+
+                # grabbing final result
+                stripped_line = f.readline().strip()
+                results.append([int(stripped_line)])
+            game_holder.append([list(reversed(boards)), list(reversed(evals)), list(reversed(results))])
+    print("loaded {0} games".format(len(game_holder)))
+    return game_holder
+
+
 def concat_files():
     out_filename = 'all_games.game'
     if not os.path.isdir(MAIN_DATA_DIRECTORY):

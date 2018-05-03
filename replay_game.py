@@ -49,23 +49,27 @@ def draw_circle(canvas, width, height, pos):
     return circ
 
 
-def click_callback(event, canvas, game_data, counter, objs, width, height):
+def click_callback(event, canvas, game_data, counter, objs, width, height, text):
     for obj in objs:
         canvas.delete(obj)
     objs.clear()
 
+    if counter[0] >= len(game_data[counter[1]][0]):
+        counter[1] += 1
+        counter[0] = 0
+        print("starting next game")
+        text['text'] = "game number: {0}".format(counter[1])
+    if counter[1] >= len(game_data):
+        print("reached end of games, exiting")
+        exit(0)
+
     temp = 0
-    # utils.print_board(game_data[0][counter[0]])
-    for circle in game_data[0][counter[0]]:
-        # print(game_data[0][counter[0]])
+    for circle in game_data[counter[1]][0][counter[0]]:
         if(circle == 1):
             objs.append(draw_circle(canvas, width, height, temp))
         temp += 1
 
     counter[0] += 1
-    if(counter[0] == len(game_data[0])):
-        print("reached end of games, exiting")
-        exit(0)
 
 
 def close(event):
@@ -86,10 +90,14 @@ def display_game(games, games_dir):
     # canvas.pack_propagate(False)
 
     game_num = 0
-    text_to_disp = "{0}\ngame number: {1}".format(games_dir, game_num)
-    text = Label(top, text=text_to_disp, height=2, bg = bg_color, fg="white", font=("Helvetica", 11))
-    text.pack()
 
+    text_to_disp_data = "{0}".format(games_dir, game_num)
+    text_to_disp_game = "game number: {1}".format(games_dir, game_num)
+    text_data_dir = Label(top, text=text_to_disp_data, height = 1, bg = bg_color, fg="white", font=("Helvetica", 11))
+    text_game_num = Label(top, text=text_to_disp_game, height = 1, bg = bg_color, fg="white", font=("Helvetica", 11))
+
+    text_data_dir.pack()
+    text_game_num.pack()
 
     # coord = [10, 50, 240, 210]
     # arc = canvas.create_arc(coord, start = 0, extent = 150, fill = "red")
@@ -97,14 +105,14 @@ def display_game(games, games_dir):
 
     lines = draw_lines(canvas, w, h)
 
-    counter = [0]
+    counter = [0, 0]
     objs = []
-    click_callback(None, canvas, games, counter, objs, w, h)
+    click_callback(None, canvas, games, counter, objs, w, h, text_game_num)
     canvas.focus_set()
 
-    canvas.bind("<Button-1>", lambda x: click_callback(x, canvas, games, counter, objs, w, h))
-    canvas.bind("<space>", lambda x: click_callback(x, canvas, games, counter, objs, w, h))
-    canvas.bind("<Return>", lambda x: click_callback(x, canvas, games, counter, objs, w, h))
+    canvas.bind("<Button-1>", lambda x: click_callback(x, canvas, games, counter, objs, w, h, text_game_num))
+    canvas.bind("<space>", lambda x: click_callback(x, canvas, games, counter, objs, w, h, text_game_num))
+    canvas.bind("<Return>", lambda x: click_callback(x, canvas, games, counter, objs, w, h, text_game_num))
     canvas.bind("<Escape>", close)
 
     canvas.pack()
@@ -114,7 +122,7 @@ def display_game(games, games_dir):
 
 def load_games(games_dir):
     curr_path = os.path.join(games_dir, 'all_games.game')
-    boards, evals, results = utils.read_in_games(curr_path)
+    boards, evals, results = utils.read_in_games_split_moves(curr_path)
     return [boards, evals, results]
 
 
@@ -127,8 +135,7 @@ def main():
     #     utils.print_board(games[0][i])
     #     input("Press enter to see next board state")
 
-    inv_games = [list(reversed(games[0])), list(reversed(games[1])), list(reversed(games[2]))]
-    display_game(inv_games, games_dir)
+    display_game(games, games_dir)
 
 
 if __name__ == "__main__":
