@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <string>
 #include <iostream>
 #include <chrono>
 #include <fstream>
@@ -19,7 +20,6 @@
 
 #include <errno.h> 
 #include <unistd.h> 
-#include <string.h>
 #include <time.h>
 #include <semaphore.h>
 #include <sys/types.h>
@@ -27,8 +27,6 @@
 #include <fcntl.h>
 #include <stdarg.h>
 #include <cstdio>
-#include <stdlib.h>
-#include <string>
 #include <inttypes.h>
 #include <unistd.h>
 
