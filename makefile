@@ -1,32 +1,34 @@
 CC = g++
 MPICC = mpic++
-CFLAGS = -std=c++14 -O1 -Wall -Wno-unused-variable -Wno-unused-value -Wno-comment -Wno-unused-but-set-variable -Wno-maybe-uninitialized -Wno-delete-non-virtual-dtor -g
+CFLAGS = -std=c++14 -Ofast -Wall -Wno-unused-variable -Wno-unused-value -Wno-comment -Wno-unused-but-set-variable -Wno-maybe-uninitialized -Wno-delete-non-virtual-dtor -g
+DRIVER_HEADERS = engine.hpp player.hpp driver.hpp
+PLAY_HEADERS = engine.hpp player.hpp
+PARAM_HEADERS = engine.hpp player.hpp param_serial.hpp
 LINKER_OPTIONS= -lrt -lpthread
 
-
-PLAY_TEST_GAMES_HEADERS = communicator.hpp engine.hpp player.hpp
-PLAY_HEADERS = communicator.hpp engine.hpp player.hpp
-RECORD_HEADERS = communicator.hpp engine.hpp player.hpp
-
-PLAY_TEST_GAMES_OBJECTS = communicator.cpp engine.cpp play_test_games.cpp player.cpp human.cpp random.cpp minimax.cpp montecarlo.cpp
-PLAY_OBJECTS = communicator.cpp play.cpp engine.cpp player.cpp human.cpp random.cpp minimax.cpp montecarlo.cpp
-RECORD_OBJECTS = communicator.cpp engine.cpp player.cpp human.cpp random.cpp minimax.cpp montecarlo.cpp record_games.cpp
+DRIVER_OBJECTS = engine.cpp driver.cpp player.cpp
+PLAY_OBJECTS = play.cpp engine.cpp player.cpp
+PARAM_OBJECTS = engine.cpp player.cpp param_serial.cpp
 
 
-all: play_test_games record_games
+all: param driver play
 
-play_test_games: $(PLAY_TEST_GAMES_OBJECTS)
-	$(CC) $(CFLAGS) $(PLAY_TEST_GAMES_HEADERS) $(PLAY_TEST_GAMES_OBJECTS) -o play_test_games $(LINKER_OPTIONS)
+driver: $(DRIVER_OBJECTS)
+	$(CC) $(CFLAGS) $(DRIVER_HEADERS) $(DRIVER_OBJECTS) -o driver $(LINKER_OPTIONS)
 
 play: $(PLAY_OBJECTS)
 	$(CC) $(CFLAGS) $(PLAY_HEADERS) $(PLAY_OBJECTS) -o play $(LINKER_OPTIONS)
 
-record_games: $(RECORD_OBJECTS)
-	$(CC) $(CFLAGS) $(RECORD_HEADERS) $(RECORD_OBJECTS) -o record_games $(LINKER_OPTIONS)
+param: $(PARAM_OBJECTS)
+	$(CC) $(CFLAGS) $(PARAM_HEADERS) $(PARAM_OBJECTS) -o param_serial $(LINKER_OPTIONS)
+
+himpi:
+	$(MPICC) $(CFLAGS) hi_mpi.cpp -o hi_mpi $(LINKER_OPTIONS)
 
 clean:
-	-rm -f play_test_games
+	-rm -f driver
 	-rm -f play
-	-rm -f record_games
 	-rm -f callgrind.out.*
 	-rm -f out.log
+	-rm -f tensor_driver
+	-rm -f param_serial

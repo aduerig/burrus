@@ -117,7 +117,7 @@ def serve_requests(memory, semaphore, mapfile, MODEL_NAME, write_file):
         x_tensor = graph.get_tensor_by_name('x:0')
         train_bool = graph.get_tensor_by_name('train_bool:0')
         value_head_output = graph.get_tensor_by_name('value_head_output:0')
-        policy_head_output = graph.get_tensor_by_name('policy_head_output:0')
+        policy_head_output = graph.get_tensor_by_name('policy_head_output/BiasAdd:0')
 
         saver.restore(sess, os.path.join(MODEL_PATH, 'model.ckpt'))
         
