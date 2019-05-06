@@ -96,7 +96,11 @@ int main(int argc, char * argv[])
     // warinign players must be instaniated in the right order, 0 then 1
     // players.push_back(new Rand(0, e)); // black
     players.push_back(new Rand(BLACK, e)); // black
-    players.push_back(new Minimax(WHITE, e, depth)); // white
+
+    std::string model_path = "/home/andrew/programming/c++/tensorflow/tensorflow/cc/burrus/data/model_0";
+    int iterations_per_move = 100;
+    players.push_back(new MonteCarlo(WHITE, e, model_path, iterations_per_move, false)); // white
+    // players.push_back(new Minimax(WHITE, e, depth)); // white
     // players.push_back(new Rand(1, e)); // white
 
     std::chrono::time_point<std::chrono::system_clock> t1, t2;

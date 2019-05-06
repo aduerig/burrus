@@ -4,7 +4,6 @@
 #include <cmath>
 #include <strings.h>
 
-
 Engine::Engine()
 {
     init_position();
@@ -178,7 +177,6 @@ U64 Engine::make_diag_left_mask(U64 mask)
     return(mask);
 }
 
-
 void Engine::fill_diag_left_mask_arr()
 {
     U64 start = 1;
@@ -200,7 +198,6 @@ void Engine::fill_diag_left_mask_arr()
     }
 }
 
-
 U64 Engine::make_diag_right_mask(U64 mask)
 {
     U64 TR_mask = ~((row_mask[7]) | (col_mask[7]));
@@ -210,7 +207,6 @@ U64 Engine::make_diag_right_mask(U64 mask)
     }
     return(mask);
 }
-
 
 void Engine::fill_diag_right_mask_arr()
 {
@@ -333,70 +329,6 @@ void Engine::pop_move()
 {
     stack_pop();
 }
-
-// void Engine::flip_stones(U64 stone, U64 own_occ, U64 opp_occ, int color)
-// {
-//     U64 flippers = 0;
-//     U64 init_rook_attacks = one_rook_attacks(stone, own_occ);
-//     U64 init_bishop_attacks = one_bishop_attacks(stone, own_occ);
-
-//     // printf("init attacks\n");
-//     // print_bit_rep(init_attacks);
-    
-//     U64 card_los = init_rook_attacks & own_occ;
-//     U64 diag_los = init_bishop_attacks & own_occ;
-    
-//     U64 other_attacks;
-//     U64 popped_board;
-
-//     while(card_los)
-//     {
-//         popped_board = lsb_board(card_los);
-//         other_attacks = one_rook_attacks(popped_board, own_occ);
-//         card_los = card_los - popped_board;
-
-//         flippers = flippers | (other_attacks & init_rook_attacks);
-//     }
-
-//     while(diag_los)
-//     {
-//         popped_board = lsb_board(diag_los);
-//         other_attacks = one_bishop_attacks(popped_board, own_occ);
-//         diag_los = diag_los - popped_board;
-
-//         flippers = flippers | (other_attacks & init_bishop_attacks);
-//     }
-
-//     // printf("\nflippers\n");
-//     // print_bit_rep(flippers);
-
-//     pos.board[color] = pos.board[color] | (flippers & opp_occ);
-//     pos.board[1-color] = pos.board[1-color] & ~flippers;
-// }
-
-// void Engine::flip_stones(U64 stone, U64 own_occ, U64 opp_occ, int color)
-// {
-//     U64 flippers = 0;
-
-//     U64 inv_opp_occ = ~opp_occ;
-//     U64 init_rook_attacks = one_rook_attacks(stone, inv_opp_occ);
-//     U64 init_bishop_attacks = one_bishop_attacks(stone, inv_opp_occ);
-
-//     U64 card_los = init_rook_attacks & own_occ;
-//     U64 diag_los = init_bishop_attacks & own_occ;
-
-//     // other_attacks = all_rook_attacks(card_los, ~own_occ);
-//     flippers |= all_rook_attacks(card_los, opp_occ) & init_rook_attacks;
-
-
-//     // other_attacks = all_bishop_attacks(diag_los, ~own_occ);
-//     flippers |= all_bishop_attacks(diag_los, opp_occ) & init_bishop_attacks;
-
-
-//     pos.board[color] |= flippers & opp_occ;
-//     pos.board[1-color] &= ~flippers;
-// }
-
 
 void Engine::flip_white_stones(U64 stone, int square, U64 own_occ, U64 opp_occ)
 {
@@ -568,30 +500,6 @@ int* Engine::generate_black_moves()
     return move_list;
 }
 
-// int Engine::score_board()
-// {
-//     int total = 0;
-//     U64 temp;
-//     U64 white = pos.white_board;
-//     U64 black = pos.black_board;
-
-//     while(white)
-//     {
-//         temp = lsb_board(white);
-//         total++;
-//         white = white - temp;
-//     }
-
-//     while(black)
-//     {
-//         temp = lsb_board(black);
-//         total--;
-//         black = black - temp;
-//     }
-//     return total;
-// }
-
-// alternative method to scoring (probably faster)
 // http://chessprogramming.wikispaces.com/Population+Count#SWAR-Popcount-The%20PopCount%20routine
 int Engine::score_board() 
 {
@@ -608,7 +516,6 @@ int Engine::score_board()
     y = (y * kf) >> 56; /* returns 8 most significant bits of x + (x<<8) + (x<<16) + (x<<24) + ...  */
     return (int) x - (int) y;
 }
-
 
 int Engine::get_winner()
 {
@@ -646,7 +553,6 @@ int Engine::is_terminal(int* move_list, int color)
     return 0;
 }
 
-
 U64 Engine::one_rook_attacks(U64 rook, U64 o, int square)
 {
     U64 o_rev = reverse_64_bits(o);
@@ -663,7 +569,6 @@ U64 Engine::one_rook_attacks(U64 rook, U64 o, int square)
     return(hori | vert);
 }
 
-
 U64 Engine::one_bishop_attacks_ANTI(U64 bishop, int square, U64 occ)
 {
     U64 line_mask = square_masks[square].right_diag_mask_excluded; // excludes square of slider
@@ -676,7 +581,6 @@ U64 Engine::one_bishop_attacks_ANTI(U64 bishop, int square, U64 occ)
     forward = forward ^ vertical_flip(reverse);
     return forward & line_mask;      // mask the line again
 }
-
 
 U64 Engine::one_bishop_attacks(U64 bishop, U64 occ)
 {
@@ -697,32 +601,6 @@ U64 Engine::one_bishop_attacks(U64 bishop, U64 occ)
 
     return attks;      // mask the line again
 }
-
-
-// U64 Engine::one_rook_attacks(U64 rook, U64 occ)
-// {
-//     int square = bitboard_to_square(rook);
-
-//     U64 forward, reverse;
-//     forward  = occ & square_masks[square].file_mask_excluded;
-
-//     // print_bit_rep(occ);
-//     // printf("mask\n");
-//     // print_bit_rep(square_masks[square].file_mask_excluded);
-
-//     printf("occ\n");
-//     print_bit_rep(occ);
-//     printf("\n");
-
-//     reverse  = vertical_flip(forward);
-//     forward -= rook;
-//     reverse -= vertical_flip(rook);
-//     forward ^= vertical_flip(reverse);
-//     forward &= square_masks[square].file_mask_excluded;
-//     print_bit_rep(forward);
-//     exit(0);
-//     return forward;
-// }
 
 // Takes in a 64 bit number with single bit
 // Returns the rank piece is on 0-7, bottom to top
@@ -777,7 +655,6 @@ int Engine::get_rank(U64 num)
     }
     return -1;
 }
-
 
 // Takes in a 64 bit number with single bit
 // Returns the file piece is on 0-7, left to right
@@ -878,7 +755,6 @@ int Engine::get_file(U64 num)
     }
 }
 
-
 int Engine::get_diag(int rank, int file)
 {
     int total_val = rank+file;
@@ -895,7 +771,6 @@ int Engine::get_diag(int rank, int file)
     }
     return (total_val << 5) | right;
 }
-
 
 // Takes in a bitboard and will return the bitboard representing only the least significant bit.
 // therefore simply return ((lots of zeros)00000000000010)
@@ -941,13 +816,11 @@ U64 Engine::msb_digit(U64 board)
         return(63-__builtin_clz(first));
 }
 
-
 // https://stackoverflow.com/questions/25802605/what-does-performing-a-byteswap-mean
 U64 Engine::reverse_8_bits(U64 x)
 {
     return (x * 0x0202020202 & 0x010884422010) % 1023;
 }
-
 
 U64 Engine::reverse_64_bits(U64 x)
 {
@@ -966,14 +839,6 @@ U64 Engine::vertical_flip(U64 x)
 {
     return __builtin_bswap64(x);
 }
-
-
-// move gen
-// U64 Engine::cardinal_moves(int color)
-// {
-//     return north_moves(get_color(color), get_color(1-color), ~get_all()) | south_moves(get_color(color), get_color(1-color), ~get_all()) |
-//            east_moves(get_color(color), get_color(1-color), ~get_all()) | west_moves(get_color(color), get_color(1-color), ~get_all());
-// }
 
 U64 Engine::cardinal_white_moves()
 {
@@ -1037,12 +902,6 @@ U64 Engine::west_moves(U64 mine, U64 prop, U64 empty)
     return empty & (moves >> 1);
 }
 
-// U64 Engine::diag_moves(int color)
-// {
-//     return north_east_moves(get_color(color), get_color(1-color), ~get_all()) | south_east_moves(get_color(color), get_color(1-color), ~get_all()) |
-//            south_west_moves(get_color(color), get_color(1-color), ~get_all()) | north_west_moves(get_color(color), get_color(1-color), ~get_all());
-// }
-
 U64 Engine::diag_white_moves()
 {
     U64 inv_get_all = ~get_all();
@@ -1056,7 +915,6 @@ U64 Engine::diag_black_moves()
     return north_east_moves(pos.black_board, pos.white_board, inv_get_all) | south_east_moves(pos.black_board, pos.white_board, inv_get_all) |
            south_west_moves(pos.black_board, pos.white_board, inv_get_all) | north_west_moves(pos.black_board, pos.white_board, inv_get_all);
 }
-
 
 U64 Engine::north_east_moves(U64 mine, U64 prop, U64 empty)
 {

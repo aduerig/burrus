@@ -360,9 +360,7 @@ void Minimax::cleanup()
 //
 
 
-
-MonteCarlo::MonteCarlo(int col, Engine* engine, std::string m_path, int sims, bool training, 
-                        sem_t* pSem, void* pSem_code, void* pSem_rest) : Player(col, engine)
+MonteCarlo::MonteCarlo(int col, Engine* engine, std::string m_path, int sims, bool training) : Player(col, engine)
 {
     model_path = m_path;
 
@@ -378,20 +376,14 @@ MonteCarlo::MonteCarlo(int col, Engine* engine, std::string m_path, int sims, bo
     num_ints_send = 128;
     num_floats_recieve = 65;
 
-    int_arr_sender = (int32_t*) malloc(num_ints_send * sizeof(int32_t));
     float_arr_reciever = (float*) malloc(num_floats_recieve * sizeof(float));
-
-    send_code = -1;
-
-    pSemaphore = pSem;
-    pSharedMemory_code = pSem_code;
-    pSharedMemory_rest = pSem_rest;
 
     no_decision = 0;
 
     temperature = 1;
-}
 
+    init_tensorflow();
+}
 
 void MonteCarlo::add_dirichlet_noise(float epsilon, float alpha) 
 {
@@ -601,7 +593,7 @@ void MonteCarlo::expand_node(Node* node, int* move_list)
 
         // initializing a PASS node
         // run network here to get policies for children, and value (needed for next line)
-        send_and_recieve_model_data(node->color);
+        calculate_value_and_policies(node->color);
         node->value = float_arr_reciever[64];
         // TEMP
         // node->value = color_multiplier(node->color) * temp_value_calc();
@@ -626,7 +618,7 @@ void MonteCarlo::expand_node(Node* node, int* move_list)
 
     // run network here to get policies for children, and value (needed for next line)
     // float_arr_reciever contains 64 policies, and the 65th is the value prediciton
-    send_and_recieve_model_data(node->color);
+    calculate_value_and_policies(node->color);
     node->value = float_arr_reciever[64];
 
     // for(int i = 0; i < 65; i++)
@@ -787,146 +779,114 @@ void MonteCarlo::calc_action_probs(Node* node)
 void MonteCarlo::cleanup()
 {
     printf("begining MonteCarlo cleanup\n");
-    free(int_arr_sender);
     free(float_arr_reciever);
     printf("finished MonteCarlo cleanup\n");
 }
 
-void MonteCarlo::load_board_state_to_int_arr_sender(int p_color)
+void MonteCarlo::load_board_state_into_tensor(int p_color, tensorflow::Matrix &t_matrix)
 {
     U64 curr_state_color = e->get_color(p_color);
     U64 opp_state_color = e->get_color(1 - p_color);
     int index;
-
-    memset(int_arr_sender, 0, num_ints_send * sizeof(int32_t));
     
     while(curr_state_color)
     {
         index = e->lsb_digit(curr_state_color);
-        int_arr_sender[index] = 1;
+        t_matrix(index) = 1;
         curr_state_color -= (1ULL << index);
     }
 
     while(opp_state_color)
     {
         index = e->lsb_digit(opp_state_color);
-        int_arr_sender[64 + index] = 1;
+        t_matrix(index + 64) = 1;
         opp_state_color -= (1ULL << index);
     }
 }
 
-// 0 is success
-// 1 is aquiring failure
-int MonteCarlo::send_and_recieve_model_data(int p_color)
-{        
-    send_code = 0;
-
-    load_board_state_to_int_arr_sender(p_color);
-
-    memcpy(pSharedMemory_code, &send_code, sizeof(int32_t));
-    memcpy(pSharedMemory_rest, int_arr_sender, num_ints_send * sizeof(int32_t));
-
-    // printf("Wrote send_code: %d\n", send_code);
-    // printf("Wrote %d ints\n", num_ints_send);
-    // printf("sizeof = %lu\n", sizeof(int32_t));
-    // printf("length = %lu\n", num_ints_send * sizeof(int32_t));
-
-    // Release the semaphore...
-    rc = release_semaphore(pSemaphore);
-    // ...and wait for it to become available again. In real code 
-    // I might want to sleep briefly before calling .acquire() in
-    // order to politely give other processes an opportunity to grab
-    // the semaphore while it is free so as to avoid starvation. But 
-    // this code is meant to be a stress test that maximizes the 
-    // opportunity for shared memory corruption and politeness is 
-    // not helpful in stress tests.
-    if (!rc)
-    {
-        rc = acquire_semaphore(pSemaphore);
-    }
-    if (rc) // aquiring failed
-    {
-        return 1;
-    }
-    else 
-    {
-        // I keep checking the shared memory until something new has 
-        // been written.
-
-        memcpy(&send_code, pSharedMemory_code, sizeof(int32_t));
-        while ((!rc) && send_code == 0) 
-        {            
-            rc = release_semaphore(pSemaphore);
-            if (!rc) 
-            {
-                rc = acquire_semaphore(pSemaphore);
-            }
-            memcpy(&send_code, pSharedMemory_code, sizeof(int32_t));
-        }
-
-        if (rc)  // aquiring failed
-        {
-            return 1;
-        }
-
-        // send_code is not 0, means we have recieved data
-        // first 64 are policies, last is value prediction
-        memcpy(float_arr_reciever, pSharedMemory_rest, num_floats_recieve * sizeof(float));
-
-        // for(int i = 0; i < 64; i++)
-        // {
-        //     printf("%f,", float_arr_reciever[i]);
-        // }
-        // printf("\n");
-    }
-
-    return 0;
-}
-
-int MonteCarlo::release_semaphore(sem_t *pSemaphore) 
+void MonteCarlo::init_tensorflow()
 {
-    int rc = 0;
-    rc = sem_post(pSemaphore);
-    if(rc) 
+    // set up input paths
+    const std::string pathToGraph = model_path + "/model.ckpt.meta";
+    const std::string checkpointPath = model_path + "/model.ckpt";
+
+    tensorflow_session = tensorflow::NewSession(tensorflow::SessionOptions());
+    if (tensorflow_session == nullptr) 
     {
-        printf("Releasing the semaphore failed\n");
+        throw std::runtime_error("Could not create Tensorflow session.");
     }
-    return rc;
-}
 
-int MonteCarlo::acquire_semaphore(sem_t *pSemaphore) 
-{
-    int rc = 0;
-    rc = sem_wait(pSemaphore);
-    if(rc) 
+    tensorflow::Status status;
+
+    // Read in the protobuf graph we exported
+    tensorflow::MetaGraphDef graph_def;
+    status = tensorflow::ReadBinaryProto(tensorflow::Env::Default(), pathToGraph, &graph_def);
+    if (!status.ok()) 
     {
-        printf("Acquiring the semaphore failed\n");
+        throw std::runtime_error("Error reading graph definition from " + pathToGraph + ": " + status.ToString());
     }
-    return rc;
-}
 
-void MonteCarlo::fill_random_ints(int* ints_to_fill, int num_ints_send)
-{
-    for(int i = 0; i < num_ints_send; i++)
+    // Add the graph to the session
+    status = tensorflow_session->Create(graph_def.graph_def());
+    if (!status.ok()) 
     {
-        // ints_to_fill[i] = rand();
-        ints_to_fill[i] = i;
+        throw std::runtime_error("Error creating graph: " + status.ToString());
     }
+
+    // Read weights from the saved checkpoint
+    tensorflow::Tensor checkpointPathTensor(tensorflow::DT_STRING, tensorflow::TensorShape());
+    checkpointPathTensor.scalar<std::string>()() = checkpointPath;
+    status = tensorflow_session->Run(
+            {{ graph_def.saver_def().filename_tensor_name(), checkpointPathTensor },},
+            {},
+            {graph_def.saver_def().restore_op_name()},
+            nullptr);
+    if (!status.ok()) 
+    {
+        throw std::runtime_error("Error loading checkpoint from " + checkpointPath + ": " + status.ToString());
+    }
+    std::cout << "really" << std::endl;
 }
 
-
-
-
-// temp funcs
-
-int MonteCarlo::temp_value_calc()
+void MonteCarlo::tensorflow_pass(int p_color)
 {
-    return e->score_board();
+    // ###### PROCESS DATA VIA FORWARD PASS
+    // x_data = [inters]
+    // res = sess.run([policy_head_output, value_head_output], feed_dict={x_tensor: x_data, train_bool: False})
+    // policy_calced = res[0][0]
+    // value_calced = res[1][0]
+    // together = np.append(policy_calced, value_calced)
+    // // ######
+
+    tensorflow::Tensor input_tensor(tensorflow::DT_FLOAT, tensorflow::TensorShape({128}));
+    tensorflow::Matrix t_matrix = input_tensor.matrix<float>();
+
+    load_board_state_into_tensor(p_color, t_matrix);
+
+    std::vector<std::pair<tensorflow::string, tensorflow::Tensor>> feedDict = { {"x:0", input_tensor} };
+    std::vector<tensorflow::Tensor> outputTensors;
+    status = session->Run(feedDict, { "y_policy_labels:0", "y_true_value:0" }, {}, &outputTensors);
+
+    if (!status.ok())
+    {
+        throw runtime_error("Error evaluating run: " + status.ToString());
+    }
+
+    auto t_matrix2 = outputTensors[0].matrix<float>();
+    std::cout << t_matrix2 << std::endl;
+    exit(0);
 }
 
+// at the end the proper values will be loaded into float_arr_reciever
+void MonteCarlo::calculate_value_and_policies(int p_color)
+{
+    tensorflow_pass(p_color)
+    // memcpy(float_arr_reciever, pSharedMemory_rest, num_floats_recieve * sizeof(float));
+}
 
-
+//
 // helper functions
+//
 
 // returns 1 for white and -1 for black
 int MonteCarlo::color_multiplier(int p_color)

@@ -26,6 +26,9 @@
 #include <random>
 #include <math.h>
 
+#include "tensorflow/core/public/session.h"
+#include "tensorflow/core/protobuf/meta_graph.pb.h"
+
 // typedef int (*foo_ptr_t)( int );
 typedef void (*fp)(int);
 
@@ -109,8 +112,7 @@ struct Node
 class MonteCarlo: public Player
 {
     public:
-        MonteCarlo(int col, Engine* engine, std::string m_path, int sims, bool training, 
-            sem_t* pSem, void* pSem_code, void* pSem_rest);
+        MonteCarlo(int col, Engine* engine, std::string m_path, int sims, bool training);
         
         int move(int* move_list);
         Node* traverse_tree(Node* node, int p_color);
@@ -125,15 +127,11 @@ class MonteCarlo: public Player
         void cleanup();
 
         // model and communication
-        void load_board_state_to_int_arr_sender(int p_color);
-        int send_and_recieve_model_data(int p_color);
-        void fill_random_ints(int* ints_to_fill, int num_ints);
-        int acquire_semaphore(sem_t *pSemaphore);
-        int release_semaphore(sem_t *pSemaphore); 
+        void init_tensorflow();
+        void load_board_state_into_tensor(int p_color, tensorflow::Matrix &t_matrix);
+        void tensorflow_pass(int p_color);
+        void calculate_value_and_policies(int p_color);
         void add_dirichlet_noise(float epsilon, float alpha);
-
-        // temporary funcs
-        int temp_value_calc();
 
         // helper funcs
         int color_multiplier(int p_color);
@@ -157,6 +155,7 @@ class MonteCarlo: public Player
     private:
         std::string model_path;
         int max_sims;
+        tensorflow::Session* tensorflow_session;
 
         // think about collisions, backprop will not go to correct parent
         std::unordered_map<U64, Node*> node_storage;
@@ -169,22 +168,10 @@ class MonteCarlo: public Player
         float* saved_action_probs;
         bool print_on;
 
-        // communication variables
-        sem_t *pSemaphore;
-        int rc;
-        void *pSharedMemory_code;
-        void *pSharedMemory_rest;
-        // int fd;
-        // struct new_params params;
-
-        // // sender flag
-        int32_t send_code; // -1 is nothing, 0 is c sent, 1 is python sent
-
         // data holders
         int num_ints_send;
         int num_floats_recieve;
 
-        int32_t* int_arr_sender;
         float* float_arr_reciever;
 
         int temperature;
