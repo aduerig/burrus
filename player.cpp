@@ -789,10 +789,8 @@ void MonteCarlo::load_board_state_into_tensor(int p_color, tensorflow::Tensor &i
     U64 opp_state_color = e->get_color(1 - p_color);
     int index;
 
-    // tensorflow::Matrix t_matrix = input_tensor.matrix<float>();
     auto t_matrix = input_tensor.matrix<float>();
-    // tensorflow/cc/burrus/player.cpp:794:25: error: 'value_type' is not a member of 'Eigen::TensorMap<Eigen::Tensor<float, 2, 1, long int>, 16, Eigen::MakePointer>'
-    // std::cout << typeid(decltype(t_matrix)::value_type).name() << std::endl;
+    t_matrix.setZero(); // check if this is fast, maybe a faster way with initing the tensor directly
 
     while(curr_state_color)
     {
@@ -869,14 +867,6 @@ std::vector<int> MonteCarlo::get_tensor_shape(tensorflow::Tensor& tensor)
 // input_tensor: http://eigen.tuxfamily.org/index.php?title=Tensor_support#Using_the_Tensor_module
 void MonteCarlo::tensorflow_pass(int p_color)
 {
-    // ###### PROCESS DATA VIA FORWARD PASS
-    // x_data = [inters]
-    // res = sess.run([policy_head_output, value_head_output], feed_dict={x_tensor: x_data, train_bool: False})
-    // policy_calced = res[0][0]
-    // value_calced = res[1][0]
-    // together = np.append(policy_calced, value_calced)
-    // // ######
-
     std::cout << "begining tensorflow pass" << std::endl;
 
     tensorflow::Status status;
@@ -921,18 +911,12 @@ void MonteCarlo::tensorflow_pass(int p_color)
     }
 
 
-    auto to_vector_form = input_tensor.flat<float>();
+    auto to_vector_form2 = input_tensor.flat<float>();
     std::cout << "input_tensor" << std::endl;
     for (int i = 0; i < 128; i++)
     {
-        std::cout << to_vector_form(i) << std::endl;
+        std::cout << to_vector_form2(i) << std::endl;
     }
-
-    
-    // image_tensor.vec<int8>()(i)
-
-    // auto t_matrix2 = outputTensors.matrix<float>();
-    // std::cout << outputTensors << std::endl;
 
     std::cout << "finished tensorflow_pass" << std::endl;
     exit(0);
