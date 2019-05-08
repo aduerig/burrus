@@ -128,7 +128,8 @@ class MonteCarlo: public Player
 
         // model and communication
         void init_tensorflow();
-        void load_board_state_into_tensor(int p_color, tensorflow::Matrix &t_matrix);
+        void load_board_state_into_tensor(int p_color, tensorflow::Tensor &input_tensor);
+        std::vector<int> get_tensor_shape(tensorflow::Tensor& tensor);
         void tensorflow_pass(int p_color);
         void calculate_value_and_policies(int p_color);
         void add_dirichlet_noise(float epsilon, float alpha);

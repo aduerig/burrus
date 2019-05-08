@@ -783,12 +783,17 @@ void MonteCarlo::cleanup()
     printf("finished MonteCarlo cleanup\n");
 }
 
-void MonteCarlo::load_board_state_into_tensor(int p_color, tensorflow::Matrix &t_matrix)
+void MonteCarlo::load_board_state_into_tensor(int p_color, tensorflow::Tensor &input_tensor)
 {
     U64 curr_state_color = e->get_color(p_color);
     U64 opp_state_color = e->get_color(1 - p_color);
     int index;
-    
+
+    // tensorflow::Matrix t_matrix = input_tensor.matrix<float>();
+    auto t_matrix = input_tensor.matrix<float>();
+    // tensorflow/cc/burrus/player.cpp:794:25: error: 'value_type' is not a member of 'Eigen::TensorMap<Eigen::Tensor<float, 2, 1, long int>, 16, Eigen::MakePointer>'
+    // std::cout << typeid(decltype(t_matrix)::value_type).name() << std::endl;
+
     while(curr_state_color)
     {
         index = e->lsb_digit(curr_state_color);
@@ -806,6 +811,7 @@ void MonteCarlo::load_board_state_into_tensor(int p_color, tensorflow::Matrix &t
 
 void MonteCarlo::init_tensorflow()
 {
+    std::cout << "begining init_tensorflow" << std::endl;
     // set up input paths
     const std::string pathToGraph = model_path + "/model.ckpt.meta";
     const std::string checkpointPath = model_path + "/model.ckpt";
@@ -845,9 +851,22 @@ void MonteCarlo::init_tensorflow()
     {
         throw std::runtime_error("Error loading checkpoint from " + checkpointPath + ": " + status.ToString());
     }
-    std::cout << "really" << std::endl;
+    std::cout << "finished init_tensorflow" << std::endl;
 }
 
+std::vector<int> MonteCarlo::get_tensor_shape(tensorflow::Tensor& tensor)
+{
+    std::vector<int> shape;
+    int num_dimensions = tensor.shape().dims();
+    for (int ii_dim = 0; ii_dim < num_dimensions; ii_dim++) 
+    {
+        shape.push_back(tensor.shape().dim_size(ii_dim));
+    }
+    return shape;
+}
+
+// working with eigen tensor
+// input_tensor: http://eigen.tuxfamily.org/index.php?title=Tensor_support#Using_the_Tensor_module
 void MonteCarlo::tensorflow_pass(int p_color)
 {
     // ###### PROCESS DATA VIA FORWARD PASS
@@ -858,29 +877,71 @@ void MonteCarlo::tensorflow_pass(int p_color)
     // together = np.append(policy_calced, value_calced)
     // // ######
 
-    tensorflow::Tensor input_tensor(tensorflow::DT_FLOAT, tensorflow::TensorShape({128}));
-    tensorflow::Matrix t_matrix = input_tensor.matrix<float>();
+    std::cout << "begining tensorflow pass" << std::endl;
 
-    load_board_state_into_tensor(p_color, t_matrix);
+    tensorflow::Status status;
 
-    std::vector<std::pair<tensorflow::string, tensorflow::Tensor>> feedDict = { {"x:0", input_tensor} };
+    tensorflow::Tensor input_tensor(tensorflow::DT_FLOAT, tensorflow::TensorShape({1, 128}));
+    tensorflow::Tensor train_bool(tensorflow::DT_BOOL, tensorflow::TensorShape());
+    train_bool.scalar<bool>()() = false;
+    load_board_state_into_tensor(p_color, input_tensor);
+
+    std::cout << "Loaded board state in" << std::endl;
+
+    std::vector<std::pair<tensorflow::string, tensorflow::Tensor>> feedDict = { {"x:0", input_tensor}, {"train_bool", train_bool} };
     std::vector<tensorflow::Tensor> outputTensors;
-    status = session->Run(feedDict, { "y_policy_labels:0", "y_true_value:0" }, {}, &outputTensors);
+    
+    std::cout << "starting Run" << std::endl;
+    status = tensorflow_session->Run(feedDict, { "value_head_output:0", "policy_head_output/BiasAdd:0" }, {}, &outputTensors);
+    std::cout << "finished Run" << std::endl;
 
     if (!status.ok())
     {
-        throw runtime_error("Error evaluating run: " + status.ToString());
+        throw std::runtime_error("Error evaluating run: " + status.ToString());
     }
 
-    auto t_matrix2 = outputTensors[0].matrix<float>();
-    std::cout << t_matrix2 << std::endl;
+    tensorflow::Tensor value_head_output = outputTensors[0];
+    tensorflow::Tensor policy_head_output = outputTensors[1];
+
+
+    std::cout << "value_head_output: " << value_head_output.scalar<float>() << std::endl;
+    
+    std::vector<int> policy_head_shape = get_tensor_shape(policy_head_output);
+    std::cout << "The shape here" << std::endl;
+    for (int i = 0; i < policy_head_shape.size(); i++)
+    {
+        std::cout << policy_head_shape[i] << std::endl;
+    }
+
+    auto to_vector_form = policy_head_output.flat<float>();
+    std::cout << "policy_head_output" << std::endl;
+    for (int i = 0; i < 64; i++)
+    {
+        std::cout << to_vector_form(i) << std::endl;
+    }
+
+
+    auto to_vector_form = input_tensor.flat<float>();
+    std::cout << "input_tensor" << std::endl;
+    for (int i = 0; i < 128; i++)
+    {
+        std::cout << to_vector_form(i) << std::endl;
+    }
+
+    
+    // image_tensor.vec<int8>()(i)
+
+    // auto t_matrix2 = outputTensors.matrix<float>();
+    // std::cout << outputTensors << std::endl;
+
+    std::cout << "finished tensorflow_pass" << std::endl;
     exit(0);
 }
 
 // at the end the proper values will be loaded into float_arr_reciever
 void MonteCarlo::calculate_value_and_policies(int p_color)
 {
-    tensorflow_pass(p_color)
+    tensorflow_pass(p_color);
     // memcpy(float_arr_reciever, pSharedMemory_rest, num_floats_recieve * sizeof(float));
 }
 

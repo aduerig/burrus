@@ -1,6 +1,9 @@
 # othello
 C++ - Using distributed reinforcement learning to play othello
 
+## to compile via bazel:
+bazel run -c opt //tensorflow/cc/burrus:play
+
 ## Running on bridges
 
 To run interactively (not with a job script):  
