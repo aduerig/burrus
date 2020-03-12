@@ -6,17 +6,17 @@ https://en.wikipedia.org/wiki/Reversi
 Burrus uses reinforcement learning with a neural network to learn how to play Othello from scratch. The core learning algorithm is a re-implementation of the novel algorithm introduced in the paper "Mastering Chess and Shogi by Self-Play with a General Reinforcement Learning Algorithm" published by Google DeepMind: https://arxiv.org/abs/1712.01815. A simple version of the learning loop is as follows:
 
 
-1. Initilize neural network with random weights 
+1. Initialize neural network with random weights 
 1. Self-play the network against itself with random noise added for diversity in moves
 1. Train next iteration of the neural network with the winner of games from step 2.
 1. Repeat steps 2-4.
 
 
-Burrus comes with an extremely performant Othello engine to compute legal moves and gamestates extremely efficiently. Bitboard calculations are adapted and applied to this new game domain from the modern literature on performant chess engines (for example of performant chess engine, see: Stockfish https://github.com/official-stockfish/Stockfish)
+Burrus comes with an extremely performant Othello engine to compute legal moves and gamestates efficiently. Bitboard calculations are adapted and applied to this new game domain from the modern literature on writing performant chess engines (for example of performant chess engine, see: Stockfish https://github.com/official-stockfish/Stockfish)
 
 
 ## Running Burrus
-### Requirements to build and execute
+### Requirements to build and run
 * Unix based environment
 * Python 3.5 or above
 	* numpy 
@@ -25,18 +25,17 @@ Burrus comes with an extremely performant Othello engine to compute legal moves 
 * std c++14
 
 ### Training burrus
-If training on one computer, first run:
-`make`
-then run:
-`train_serial.sh`
+If training on one computer, first run `make`
+
+then run `train_serial.sh`
 
 ### Playing against burrus
-Running `play` after make will have two players as defined in play.cpp play against each other. The players are added in the line: `players.push_back`.
+Running `play` after `make` will have two players as defined in `play.cpp` play against each other.
 
 #### Types of players avaliable
-* Human: accepts input from the keyboard for moves to make. Takes in an integer from 0-63 starting in the upper left and going right.
+* Human: Accepts input from the keyboard for moves to make. Takes in an integer from 0-63 starting in the upper left and going right.
 * Rand: Makes random legal moves.
-* Minimax: Traditional AI that looks ahead to a certain `depth` game states, and minimizes the loss from its perspective according to a simple `board_evaluation` function (total_enemy_pieces - total_its_pieces). 
+* Minimax: Traditional AI that looks ahead to a certain `depth` game states, and minimizes the loss from its perspective according to a simple `board_evaluation` function (total_enemy_pieces - total_its_pieces). Depth can be passed in as an argument to the script `play` 
 * MonteCarlo: AI that uses the AlphaZero rollout algorithm to select its next move.
 
 
